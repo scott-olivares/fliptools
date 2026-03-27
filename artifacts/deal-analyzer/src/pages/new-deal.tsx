@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useCreateDeal } from "@workspace/api-client-react";
 import { ArrowLeft, Home, DollarSign, Ruler, Bed, Bath, Calendar } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,7 +29,7 @@ export default function NewDeal() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       address: "",
@@ -72,10 +73,11 @@ export default function NewDeal() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="address">Subject Property Address *</Label>
-                  <Input 
-                    id="address" 
-                    placeholder="123 Main St, Austin, TX 78701" 
-                    {...register("address")} 
+                  <AddressAutocomplete
+                    id="address"
+                    placeholder="123 Main St, Austin, TX 78701"
+                    value={watch("address") || ""}
+                    onChange={val => setValue("address", val, { shouldValidate: true })}
                   />
                   {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
                 </div>
