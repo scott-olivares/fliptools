@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useCreateDeal } from "@workspace/api-client-react";
-import { ArrowLeft, Home, DollarSign, Ruler, Bed, Bath, Calendar } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, Ruler, Bed, Bath, Calendar, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
@@ -28,7 +29,9 @@ type FormValues = z.infer<typeof formSchema>;
 export default function NewDeal() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+  const [autoFilled, setAutoFilled] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
+
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -36,6 +39,26 @@ export default function NewDeal() {
       askingPrice: undefined,
     }
   });
+
+  const handleAddressSelect = async (address: string) => {
+    setAutoFilling(true);
+    setAutoFilled(false);
+    try {
+      const res = await fetch(`/api/properties/lookup?address=${encodeURIComponent(address)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.beds != null) setValue("beds", data.beds);
+      if (data.baths != null) setValue("baths", data.baths);
+      if (data.sqft != null) setValue("sqft", data.sqft);
+      if (data.yearBuilt != null) setValue("yearBuilt", data.yearBuilt);
+      if (data.lotSize != null) setValue("lotSize", data.lotSize);
+      setAutoFilled(true);
+    } catch {
+      // silently fail — user can still fill manually
+    } finally {
+      setAutoFilling(false);
+    }
+  };
 
   const createMutation = useCreateDeal({
     mutation: {
@@ -77,9 +100,21 @@ export default function NewDeal() {
                     id="address"
                     placeholder="123 Main St, Austin, TX 78701"
                     value={watch("address") || ""}
-                    onChange={val => setValue("address", val, { shouldValidate: true })}
+                    onChange={val => {
+                      setValue("address", val, { shouldValidate: true });
+                      setAutoFilled(false);
+                    }}
+                    onSelect={handleAddressSelect}
                   />
                   {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+                  {autoFilling && (
+                    <p className="text-xs text-muted-foreground animate-pulse">Looking up property details…</p>
+                  )}
+                  {autoFilled && !autoFilling && (
+                    <p className="text-xs text-emerald-600 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Property details auto-filled from records
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

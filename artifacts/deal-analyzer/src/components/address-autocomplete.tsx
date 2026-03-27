@@ -32,12 +32,13 @@ function formatAddress(s: Suggestion): string {
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  onSelect?: (value: string) => void;
   placeholder?: string;
   className?: string;
   id?: string;
 }
 
-export function AddressAutocomplete({ value, onChange, placeholder, className, id }: Props) {
+export function AddressAutocomplete({ value, onChange, onSelect, placeholder, className, id }: Props) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +92,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, className, i
     const formatted = formatAddress(s);
     setQuery(formatted);
     onChange(formatted);
+    onSelect?.(formatted);
     setSuggestions([]);
     setIsOpen(false);
   };

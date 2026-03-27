@@ -1,0 +1,85 @@
+Connect the existing FlipRate frontend to real RentCast data. The UI is already built, so do not redesign or rebuild the frontend unless it is absolutely necessary to wire in real data.
+
+Goal:
+Replace any mock/fake property and comp data with live RentCast data so the app works with real addresses and real comparable property results.
+
+Requirements:
+
+* Use RentCast as the data source.
+* Store the API key in an environment variable named `RENTCAST_API_KEY`.
+* Do not expose the API key in frontend/client-side code.
+* All RentCast requests must go through secure backend/server routes.
+* Reuse the existing frontend and existing UI components as much as possible.
+
+What to implement:
+
+1. Address lookup / property fetch
+
+* When the user enters a property address, call the RentCast property records endpoint to find the subject property.
+* Normalize the response into the exact shape the frontend already expects.
+* Return core subject property fields such as address, beds, baths, square footage, lot size, year built, property type, last sale price, and last sale date when available.
+
+2. Value estimate + comps
+
+* After the subject property is resolved, call the RentCast value estimate endpoint for that property.
+* Use the comparable sale properties returned by RentCast as the comp set.
+* Normalize comp data into the shape the current frontend comp table/cards already use.
+* Include fields like address, sale price, sold date, beds, baths, square feet, property type, and price per square foot.
+* If latitude/longitude is available, also calculate distance from subject property if the frontend already has a place to show it.
+
+3. Backend integration
+
+* Add secure backend/server endpoints or server functions for:
+
+  * property lookup
+  * valuation/comps lookup
+* Keep the RentCast integration in a small reusable service/module.
+* Add solid error handling for:
+
+  * missing API key
+  * invalid address
+  * no property match
+  * no comps returned
+  * RentCast request errors / rate limits
+
+4. Data mapping
+
+* Inspect the current frontend code first and determine the exact data structure it already expects.
+* Map RentCast responses to that structure so the frontend works with minimal UI changes.
+* Remove or bypass mock data sources currently feeding the UI.
+
+5. Save flow
+
+* If the app already has save functionality, make sure the saved record includes the real RentCast-powered subject property data and comp data instead of mock data.
+* Preserve the current save behavior and schema as much as possible.
+
+Implementation notes:
+
+* Do not rebuild the app.
+* Do not spend time on styling unless something small is needed to support real data states.
+* Focus only on getting live RentCast data flowing through the existing experience.
+* Keep changes modular and easy to maintain.
+
+Before coding:
+
+* First inspect the current codebase and identify:
+
+  * where mock property/comps data is currently coming from
+  * what shape the frontend expects
+  * what backend/server structure already exists
+* Then implement the RentCast integration with the smallest clean set of changes.
+
+After coding:
+
+* Show me:
+
+  * which files were changed
+  * where to add the RentCast API key
+  * which backend endpoints were added or updated
+  * any fields where RentCast did not match the current frontend exactly
+  * any remaining gaps or decisions I need to make
+
+Important:
+
+* Do not use fake fallback data unless absolutely necessary.
+* If the API key is missing, wire everything up anyway and clearly tell me where to add it.

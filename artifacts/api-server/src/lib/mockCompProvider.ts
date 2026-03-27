@@ -16,6 +16,8 @@ export interface CompFilters {
   monthsBack?: number;
   sqftSimilarityPct?: number;
   subjectSqft?: number;
+  subjectBeds?: number;
+  subjectBaths?: number;
 }
 
 export interface CompProvider {

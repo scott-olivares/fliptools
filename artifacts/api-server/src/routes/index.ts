@@ -4,6 +4,7 @@ import dealsRouter from "./deals";
 import compsRouter from "./comps";
 import seedRouter from "./seed";
 import geocodeRouter from "./geocode";
+import propertiesRouter from "./properties";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(dealsRouter);
 router.use(compsRouter);
 router.use(seedRouter);
 router.use(geocodeRouter);
+router.use(propertiesRouter);
 
 export default router;

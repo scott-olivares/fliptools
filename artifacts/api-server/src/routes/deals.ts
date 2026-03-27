@@ -16,6 +16,11 @@ import {
 } from "@workspace/api-zod";
 import { calculateARV, calculateOffer } from "../lib/arvEngine.js";
 import { mockCompProvider } from "../lib/mockCompProvider.js";
+import { rentcastCompProvider, isRentCastConfigured } from "../lib/rentcastProvider.js";
+
+function activeCompProvider() {
+  return isRentCastConfigured() ? rentcastCompProvider : mockCompProvider;
+}
 
 const router: IRouter = Router();
 
@@ -32,6 +37,7 @@ router.post("/deals", async (req, res): Promise<void> => {
   }
 
   const data = parsed.data;
+  const provider = activeCompProvider();
   const [deal] = await db
     .insert(dealsTable)
     .values({
@@ -44,20 +50,31 @@ router.post("/deals", async (req, res): Promise<void> => {
       yearBuilt: data.yearBuilt ?? null,
       notes: data.notes ?? null,
       status: data.status ?? "new",
-      dataSource: "mock",
+      dataSource: provider.name === "RentCast" ? "rentcast" : "mock",
     })
     .returning();
 
-  const mockComps = await mockCompProvider.getCompsForProperty(deal.address);
-  const insertedComps = await db.insert(compsTable).values(mockComps).returning();
-  for (const comp of insertedComps) {
-    await db.insert(dealCompsTable).values({
-      dealId: deal.id,
-      compId: comp.id,
-      included: true,
-      relevance: "normal",
-      notes: null,
-    });
+  try {
+    const filters = {
+      subjectSqft: deal.sqft ?? undefined,
+      subjectBeds: deal.beds ?? undefined,
+      subjectBaths: deal.baths ?? undefined,
+    };
+    const comps = await provider.getCompsForProperty(deal.address, filters);
+    if (comps.length > 0) {
+      const insertedComps = await db.insert(compsTable).values(comps).returning();
+      for (const comp of insertedComps) {
+        await db.insert(dealCompsTable).values({
+          dealId: deal.id,
+          compId: comp.id,
+          included: true,
+          relevance: "normal",
+          notes: null,
+        });
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[deals] comp fetch failed (${provider.name}): ${err?.message}`);
   }
 
   res.status(201).json(GetDealResponse.parse(deal));
@@ -189,6 +206,8 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     monthsBack: deal.compMonthsBack ?? 6,
     sqftSimilarityPct: deal.compSqftPct ?? 20,
     subjectSqft: deal.sqft ?? undefined,
+    subjectBeds: deal.beds ?? undefined,
+    subjectBaths: deal.baths ?? undefined,
   };
 
   const existingDealComps = await db
@@ -202,7 +221,20 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     await db.delete(compsTable).where(inArray(compsTable.id, compIds));
   }
 
-  const freshComps = await mockCompProvider.getCompsForProperty(deal.address, filters);
+  const provider = activeCompProvider();
+  let freshComps;
+  try {
+    freshComps = await provider.getCompsForProperty(deal.address, filters);
+  } catch (err: any) {
+    res.status(502).json({ error: `Comp provider error (${provider.name}): ${err?.message}` });
+    return;
+  }
+
+  if (freshComps.length === 0) {
+    res.json({ refreshed: 0 });
+    return;
+  }
+
   const insertedComps = await db.insert(compsTable).values(freshComps).returning();
   for (const comp of insertedComps) {
     await db.insert(dealCompsTable).values({
@@ -213,6 +245,10 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
       notes: null,
     });
   }
+
+  await db.update(dealsTable)
+    .set({ dataSource: provider.name === "RentCast" ? "rentcast" : "mock" })
+    .where(eq(dealsTable.id, deal.id));
 
   res.json({ refreshed: insertedComps.length });
 });
