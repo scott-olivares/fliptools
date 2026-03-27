@@ -1,0 +1,27 @@
+import { pgTable, text, serial, timestamp, real, integer } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const dealsTable = pgTable("deals", {
+  id: serial("id").primaryKey(),
+  address: text("address").notNull(),
+  askingPrice: real("asking_price").notNull(),
+  beds: real("beds"),
+  baths: real("baths"),
+  sqft: integer("sqft"),
+  lotSize: real("lot_size"),
+  yearBuilt: integer("year_built"),
+  notes: text("notes"),
+  status: text("status").notNull().default("new"),
+  arvEstimate: real("arv_estimate"),
+  arvOverride: real("arv_override"),
+  maxOffer: real("max_offer"),
+  projectedReturn: real("projected_return"),
+  dataSource: text("data_source").notNull().default("mock"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof dealsTable.$inferSelect;

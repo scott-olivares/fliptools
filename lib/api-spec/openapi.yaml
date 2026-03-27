@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Deal Analyzer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: deals
+    description: Deal management
+  - name: comps
+    description: Comparable property management
 paths:
   /healthz:
     get:
@@ -24,6 +27,351 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /deals:
+    get:
+      operationId: listDeals
+      tags: [deals]
+      summary: List all deals
+      responses:
+        "200":
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Deal"
+    post:
+      operationId: createDeal
+      tags: [deals]
+      summary: Create a new deal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDealBody"
+      responses:
+        "201":
+          description: Created deal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /deals/{id}:
+    get:
+      operationId: getDeal
+      tags: [deals]
+      summary: Get a deal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDeal
+      tags: [deals]
+      summary: Update a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDealBody"
+      responses:
+        "200":
+          description: Updated deal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDeal
+      tags: [deals]
+      summary: Delete a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /deals/{id}/comps:
+    get:
+      operationId: getDealComps
+      tags: [comps]
+      summary: Get comps for a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comps for this deal
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DealComp"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: addCompToDeal
+      tags: [comps]
+      summary: Add or update a comp association for a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCompBody"
+      responses:
+        "201":
+          description: DealComp record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealComp"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /deals/{id}/comps/{compId}:
+    patch:
+      operationId: updateDealComp
+      tags: [comps]
+      summary: Update comp selection/relevance for a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: compId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDealCompBody"
+      responses:
+        "200":
+          description: Updated DealComp
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealComp"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeDealComp
+      tags: [comps]
+      summary: Remove a comp from a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: compId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /deals/{id}/arv:
+    get:
+      operationId: calculateArv
+      tags: [deals]
+      summary: Calculate ARV for a deal based on selected comps
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: ARV result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ARVResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /deals/{id}/offer:
+    get:
+      operationId: getOfferAnalysis
+      tags: [deals]
+      summary: Get offer analysis for a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Offer analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferAnalysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: saveOfferAnalysis
+      tags: [deals]
+      summary: Save offer analysis for a deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveOfferAnalysisBody"
+      responses:
+        "200":
+          description: Saved offer analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferAnalysis"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /comps:
+    post:
+      operationId: createComp
+      tags: [comps]
+      summary: Create a new comp (manual entry)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompBody"
+      responses:
+        "201":
+          description: Created comp
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comp"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /seed:
+    post:
+      operationId: seedData
+      tags: [deals]
+      summary: Seed sample data for testing
+      responses:
+        "200":
+          description: Seeded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +382,562 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SeedResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        dealsCreated:
+          type: integer
+        compsCreated:
+          type: integer
+      required:
+        - message
+        - dealsCreated
+        - compsCreated
+
+    Deal:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        askingPrice:
+          type: number
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        yearBuilt:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [new, reviewing, offer_submitted, passed, closed]
+        arvEstimate:
+          type: ["number", "null"]
+        arvOverride:
+          type: ["number", "null"]
+        maxOffer:
+          type: ["number", "null"]
+        projectedReturn:
+          type: ["number", "null"]
+        dataSource:
+          type: string
+          enum: [mock, manual]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - address
+        - askingPrice
+        - beds
+        - baths
+        - sqft
+        - lotSize
+        - yearBuilt
+        - notes
+        - status
+        - arvEstimate
+        - arvOverride
+        - maxOffer
+        - projectedReturn
+        - dataSource
+        - createdAt
+        - updatedAt
+
+    DealDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        askingPrice:
+          type: number
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        yearBuilt:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [new, reviewing, offer_submitted, passed, closed]
+        arvEstimate:
+          type: ["number", "null"]
+        arvOverride:
+          type: ["number", "null"]
+        maxOffer:
+          type: ["number", "null"]
+        projectedReturn:
+          type: ["number", "null"]
+        dataSource:
+          type: string
+          enum: [mock, manual]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        comps:
+          type: array
+          items:
+            $ref: "#/components/schemas/DealComp"
+        offerAnalysis:
+          $ref: "#/components/schemas/OfferAnalysis"
+          nullable: true
+      required:
+        - id
+        - address
+        - askingPrice
+        - beds
+        - baths
+        - sqft
+        - lotSize
+        - yearBuilt
+        - notes
+        - status
+        - arvEstimate
+        - arvOverride
+        - maxOffer
+        - projectedReturn
+        - dataSource
+        - createdAt
+        - updatedAt
+        - comps
+
+    CreateDealBody:
+      type: object
+      properties:
+        address:
+          type: string
+        askingPrice:
+          type: number
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        yearBuilt:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [new, reviewing, offer_submitted, passed, closed]
+      required:
+        - address
+        - askingPrice
+
+    UpdateDealBody:
+      type: object
+      properties:
+        address:
+          type: ["string", "null"]
+        askingPrice:
+          type: ["number", "null"]
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        yearBuilt:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+          enum: [new, reviewing, offer_submitted, passed, closed, null]
+        arvOverride:
+          type: ["number", "null"]
+        maxOffer:
+          type: ["number", "null"]
+        arvEstimate:
+          type: ["number", "null"]
+        projectedReturn:
+          type: ["number", "null"]
+
+    Comp:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        salePrice:
+          type: ["number", "null"]
+        listPrice:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        distanceMiles:
+          type: ["number", "null"]
+        soldDate:
+          type: ["string", "null"]
+        listingStatus:
+          type: string
+          enum: [sold, pending, active]
+        propertyType:
+          type: string
+        condition:
+          type: string
+          enum: [remodeled, average, unknown]
+        source:
+          type: string
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+        dataSource:
+          type: string
+          enum: [mock, manual]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - address
+        - salePrice
+        - listPrice
+        - sqft
+        - lotSize
+        - beds
+        - baths
+        - distanceMiles
+        - soldDate
+        - listingStatus
+        - propertyType
+        - condition
+        - source
+        - latitude
+        - longitude
+        - dataSource
+        - createdAt
+
+    DealComp:
+      type: object
+      properties:
+        id:
+          type: integer
+        dealId:
+          type: integer
+        compId:
+          type: integer
+        included:
+          type: boolean
+        relevance:
+          type: string
+          enum: [high, normal, low]
+        notes:
+          type: ["string", "null"]
+        comp:
+          $ref: "#/components/schemas/Comp"
+      required:
+        - id
+        - dealId
+        - compId
+        - included
+        - relevance
+        - notes
+        - comp
+
+    AddCompBody:
+      type: object
+      properties:
+        compId:
+          type: ["integer", "null"]
+        included:
+          type: boolean
+        relevance:
+          type: string
+          enum: [high, normal, low]
+        notes:
+          type: ["string", "null"]
+        newComp:
+          $ref: "#/components/schemas/CreateCompBody"
+          nullable: true
+
+    UpdateDealCompBody:
+      type: object
+      properties:
+        included:
+          type: ["boolean", "null"]
+        relevance:
+          type: ["string", "null"]
+          enum: [high, normal, low, null]
+        notes:
+          type: ["string", "null"]
+
+    CreateCompBody:
+      type: object
+      properties:
+        address:
+          type: string
+        salePrice:
+          type: ["number", "null"]
+        listPrice:
+          type: ["number", "null"]
+        sqft:
+          type: ["integer", "null"]
+        lotSize:
+          type: ["number", "null"]
+        beds:
+          type: ["number", "null"]
+        baths:
+          type: ["number", "null"]
+        distanceMiles:
+          type: ["number", "null"]
+        soldDate:
+          type: ["string", "null"]
+        listingStatus:
+          type: string
+          enum: [sold, pending, active]
+        propertyType:
+          type: string
+        condition:
+          type: string
+          enum: [remodeled, average, unknown]
+        source:
+          type: string
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+      required:
+        - address
+        - listingStatus
+        - propertyType
+        - condition
+        - source
+
+    ARVContributingComp:
+      type: object
+      properties:
+        compId:
+          type: integer
+        address:
+          type: string
+        salePrice:
+          type: number
+        condition:
+          type: string
+        listingStatus:
+          type: string
+        weight:
+          type: number
+        adjustedContribution:
+          type: number
+      required:
+        - compId
+        - address
+        - salePrice
+        - condition
+        - listingStatus
+        - weight
+        - adjustedContribution
+
+    ARVMarketComp:
+      type: object
+      properties:
+        compId:
+          type: integer
+        address:
+          type: string
+        listPrice:
+          type: number
+        condition:
+          type: string
+        listingStatus:
+          type: string
+      required:
+        - compId
+        - address
+        - listPrice
+        - condition
+        - listingStatus
+
+    ARVResult:
+      type: object
+      properties:
+        dealId:
+          type: integer
+        suggestedArv:
+          type: number
+        confidenceLevel:
+          type: string
+          enum: [high, medium, low]
+        confidenceExplanation:
+          type: string
+        methodology:
+          type: string
+        contributingComps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ARVContributingComp"
+        marketComps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ARVMarketComp"
+        marketSignal:
+          type: ["string", "null"]
+        pricePerSqft:
+          type: ["number", "null"]
+        totalWeightedComps:
+          type: integer
+        hasManualOverride:
+          type: boolean
+        manualOverrideValue:
+          type: ["number", "null"]
+      required:
+        - dealId
+        - suggestedArv
+        - confidenceLevel
+        - confidenceExplanation
+        - methodology
+        - contributingComps
+        - marketComps
+        - marketSignal
+        - pricePerSqft
+        - totalWeightedComps
+        - hasManualOverride
+        - manualOverrideValue
+
+    OfferAnalysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        dealId:
+          type: integer
+        arv:
+          type: number
+        rehabCost:
+          type: number
+        closingCosts:
+          type: number
+        holdingCosts:
+          type: number
+        sellingCosts:
+          type: number
+        otherCosts:
+          type: number
+        desiredProfitAmount:
+          type: number
+        targetReturnPct:
+          type: number
+        purchasePrice:
+          type: ["number", "null"]
+        maxOffer:
+          type: number
+        projectedReturn:
+          type: ["number", "null"]
+        projectedProfit:
+          type: ["number", "null"]
+        signal:
+          type: string
+          enum: [strong_candidate, close_review_manually, likely_pass]
+        signalExplanation:
+          type: string
+        totalCosts:
+          type: number
+        gapToAsking:
+          type: ["number", "null"]
+        flaggedFarApart:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - dealId
+        - arv
+        - rehabCost
+        - closingCosts
+        - holdingCosts
+        - sellingCosts
+        - otherCosts
+        - desiredProfitAmount
+        - targetReturnPct
+        - purchasePrice
+        - maxOffer
+        - projectedReturn
+        - projectedProfit
+        - signal
+        - signalExplanation
+        - totalCosts
+        - gapToAsking
+        - flaggedFarApart
+        - createdAt
+        - updatedAt
+
+    SaveOfferAnalysisBody:
+      type: object
+      properties:
+        arv:
+          type: number
+        rehabCost:
+          type: number
+        closingCosts:
+          type: number
+        holdingCosts:
+          type: number
+        sellingCosts:
+          type: number
+        otherCosts:
+          type: number
+        desiredProfitAmount:
+          type: number
+        targetReturnPct:
+          type: number
+        purchasePrice:
+          type: ["number", "null"]
+      required:
+        - arv
+        - rehabCost
+        - closingCosts
+        - holdingCosts
+        - sellingCosts
+        - otherCosts
+        - desiredProfitAmount
+        - targetReturnPct

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Deal Analyzer"
+version = "1.0.0"
+id = "artifacts/deal-analyzer"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23439
+
+[services.development]
+run = "pnpm --filter @workspace/deal-analyzer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/deal-analyzer", "run", "build" ]
+publicDir = "artifacts/deal-analyzer/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23439"
+BASE_PATH = "/"

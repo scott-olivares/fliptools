@@ -1,0 +1,220 @@
+Build a full-stack MVP web app in Replit called “Deal Analyzer” for a real estate investor who buys, rehabs, and resells houses.
+
+This is not a general home search app. It is a fast deal-screening tool for an investor. The purpose is to help him evaluate potential flip deals in a few minutes instead of manually pulling comps and backing into an offer.
+
+Use:
+- Next.js
+- TypeScript
+- Tailwind
+- Prisma
+- SQLite for initial persistence
+- Clean, simple UI optimized for speed and repeated use
+- No authentication for v1 unless needed for basic app flow
+- Seed the app with realistic sample data so the workflow can be tested immediately
+
+Very important product guidance:
+- Prioritize speed, clarity, and transparency over flashy AI features
+- Do not make this a black box
+- Every estimate must show how it was derived
+- Every major output must be editable by the user
+- Build the app so real comp data providers can be plugged in later
+- For now, use a mock comp data provider or CSV-based seed data if live MLS integration is not available
+- Clearly label all mock/sample data as sample data
+- Do not fake live MLS or Redfin integrations
+
+The core user workflow is:
+
+1. Enter property
+The user can create a new deal by entering:
+- Property address
+- Asking price
+- Beds
+- Baths
+- Square footage
+- Lot size
+- Year built
+- Notes
+
+2. Review comps
+The app should display comparable properties with:
+- Address
+- Sale price
+- List price if active/pending
+- Square footage
+- Lot size
+- Beds
+- Baths
+- Distance from subject property
+- Sold date or listing status
+- Property type
+- Condition tag such as remodeled / flip / average / unknown
+- Source label such as sold / pending / active
+
+The user must be able to:
+- Filter comps by radius
+- Filter by sold date
+- Filter by sq ft similarity
+- Filter by lot size similarity
+- Filter by beds / baths
+- Filter by status: sold / pending / active
+- Include or exclude comps manually
+- Mark comps as more relevant or less relevant
+- Add a manual comp if needed
+
+Default comp rules based on this investor’s process:
+- Single-family residences only
+- Default radius: 0.5 miles
+- Default time frame: last 6 months
+- Default similarity: within 20% of subject property square footage
+- Default lot size similarity: within 20%
+- Renovated / remodeled / flip comps are most important for ARV
+- Sold and pending remodeled homes should be used for ARV
+- Active remodeled homes should be shown as market competition and market direction, but not weighted as heavily as sold and pending comps
+- If active renovated comps are below sold/pending renovated comps, call that out as a possible softening market signal
+- Price per square foot can be shown as a reference field, but it should NOT be the primary ARV methodology
+
+3. Estimate ARV
+The app should estimate After Repair Value based primarily on selected comparable properties, not a simple price-per-square-foot model.
+
+ARV requirements:
+- Build a transparent ARV engine using selected comps
+- Weight renovated / flipped comps most heavily
+- Weight sold remodeled comps highest
+- Weight pending remodeled comps slightly lower
+- Show active remodeled comps in a separate “market competition” section and optionally allow them to lightly influence the confidence commentary, but not dominate the ARV number
+- If not enough high-quality renovated comps exist, show lower confidence and allow manual override
+- Let the user manually override ARV at any time
+- Show a plain-English explanation of the estimate
+
+Use an initial weighting model like this, but keep it configurable in code:
+- Remodeled sold comp: 1.0
+- Remodeled pending comp: 0.85
+- Remodeled active comp: 0.30 and shown mostly as directional context
+- Average-condition sold comp: 0.35
+- Unknown-condition comp: 0.20
+
+Use a weighted median or robust weighted average, not a naive average. Remove obvious outliers.
+
+Display:
+- Suggested ARV
+- Confidence level: high / medium / low
+- Why the confidence is what it is
+- Which comps contributed most
+
+4. Offer calculator
+Build an offer analysis panel that is investor-friendly and editable.
+
+Start with these fields:
+- ARV
+- Rehab cost
+- Closing costs
+- Holding costs
+- Selling costs
+- Other costs
+- Desired profit amount
+- Desired return target
+- Purchase price / offer price
+
+The investor does NOT use a simple 70% rule.
+He currently uses a spreadsheet where he inputs ARV and other costs, then adjusts purchase price until the return reaches roughly 9% of ARV.
+
+For v1:
+- Build a flexible offer calculator
+- Allow the user to enter all cost assumptions manually
+- Show the max offer based on target return
+- Also allow the user to manually adjust the purchase price and see the resulting projected return
+- Show the formula breakdown clearly
+- Make the target return editable, with an initial default that can reflect roughly 9% of ARV
+- Include asking price vs max offer comparison
+- Include a quick signal like:
+  - Strong candidate
+  - Close, review manually
+  - Likely pass
+
+Add a practical investor rule:
+- If the recommended max offer is more than $100,000 below asking price, flag it as “likely too far apart to pursue” but still let the user review it
+
+5. Save deals
+The app must persist deals and let the user return later.
+
+Each saved deal should include:
+- Subject property details
+- All comp selections and exclusions
+- ARV estimate
+- Manual ARV override if used
+- Cost assumptions
+- Max offer
+- Notes
+- Status like:
+  - New
+  - Reviewing
+  - Offer submitted
+  - Passed
+  - Closed
+
+6. Dashboard
+Create a dashboard view showing saved deals with:
+- Address
+- Asking price
+- Suggested ARV
+- Suggested max offer
+- Margin or projected return
+- Status
+- Last updated date
+
+Add:
+- Search
+- Sort
+- Simple filters
+- Quick visual indicators for best opportunities
+
+7. Architecture
+Build this cleanly so it can evolve later into:
+- Real MLS or brokerage data integration
+- Email ingestion of incoming deals
+- Expense tracking by property
+- Vendor workflows like termite, staging, photos
+- Utility and insurance task handling
+
+But for this first version, do NOT build those future features.
+Only prepare the code structure so they can be added later.
+
+Technical requirements:
+- Use a service layer for comp data providers
+- Create one mock provider now
+- Make it easy to swap in a real provider later
+- Seed several realistic sample deals and comps
+- Add clear types/interfaces for Deal, Property, Comp, ARVResult, OfferAnalysis
+- Handle errors gracefully
+- Keep the UI fast and uncluttered
+- Make it look professional but simple
+- Optimize for desktop first
+
+Important UX principles:
+- This investor may analyze 20 to 50 properties a week
+- The experience should feel fast, practical, and repeatable
+- The best UX is one that gets him close quickly, then lets him manually refine
+- The app should feel like an analyst assistant, not a magic AI machine
+
+What to build first:
+1. Data model
+2. Seed/mock data
+3. Dashboard
+4. New deal form
+5. Comp review table with filters and include/exclude toggles
+6. ARV engine
+7. Offer calculator
+8. Save/edit deal flow
+
+Before coding:
+- Show me the proposed data model
+- Show me the app screens/pages you plan to build
+- Show me the ARV approach and offer calculation logic in plain English
+
+Then build the app.
+
+When finished:
+- Explain how to run it in Replit
+- Explain where I can later plug in real comp data
+- Show me the main files and architecture
+- Suggest the best next improvements for v2

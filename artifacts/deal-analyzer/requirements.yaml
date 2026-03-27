@@ -1,0 +1,18 @@
+packages:
+  "framer-motion": "For smooth tab transitions and layout animations"
+  "@hookform/resolvers": "For Zod form validation"
+  "react-hook-form": "For complex calculator and deal forms"
+  "date-fns": "For date formatting in tables"
+  "clsx": "For class merging"
+  "tailwind-merge": "For class merging"
+  "lucide-react": "For UI icons"
+
+images:
+  - path: "artifacts/deal-analyzer/public/images/auth-bg.png"
+    description: "Abstract geometric pattern in very subtle cool gray and slate, professional architectural or financial mood, very minimal and light"
+    aspect_ratio: "16:9"
+
+notes:
+  - App relies on generated Orval hooks from @workspace/api-client-react
+  - Offer calculator recalculates locally before saving to the backend
+  - Wouter Link is used exclusively without nested anchor tags
