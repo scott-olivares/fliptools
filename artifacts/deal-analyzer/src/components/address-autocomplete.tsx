@@ -55,18 +55,10 @@ export function AddressAutocomplete({ value, onChange, placeholder, className, i
     }
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        q,
-        format: "json",
-        limit: "6",
-        addressdetails: "1",
-        countrycodes: "us",
-        dedupe: "1",
-      });
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params}`,
-        { headers: { "Accept-Language": "en", "User-Agent": "DealAnalyzerApp/1.0" } }
+        `/api/geocode/autocomplete?q=${encodeURIComponent(q)}`
       );
+      if (!res.ok) throw new Error("geocode error");
       const data: Suggestion[] = await res.json();
       const filtered = data.filter(s => s.address.road || s.address.house_number);
       setSuggestions(filtered.slice(0, 5));
