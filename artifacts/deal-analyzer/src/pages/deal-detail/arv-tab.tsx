@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calculator, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
+import { Calculator, AlertTriangle, ArrowRight, ShieldCheck, Info, Scale, Tag, Eye, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ArvTab({ deal, arv, onJumpToOffer }: { deal: DealDetail, arv: ARVResult | undefined, onJumpToOffer: () => void }) {
@@ -176,6 +176,55 @@ export default function ArvTab({ deal, arv, onJumpToOffer }: { deal: DealDetail,
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* How This Works */}
+      <div className="lg:col-span-3 border-t pt-6 mt-2">
+        <div className="flex items-center gap-2 mb-4">
+          <Info className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold text-sm text-slate-700">How the ARV Engine Works</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Scale className="w-4 h-4 text-primary shrink-0" />
+              <span className="font-semibold text-sm">Condition × Status Weighting</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Each comp is weighted by how reliable it is as a price signal. A remodeled, sold comp carries full weight (1.0×). A remodeled pending is 0.85×. Active listings are discounted heavily (0.30×) since they haven't closed. Average-condition comps start at 0.35×, and unknown condition at 0.20×.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-primary shrink-0" />
+              <span className="font-semibold text-sm">Relevance Multiplier</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              The High / Normal / Low flag you set on each comp in the Comps Review tab multiplies its base weight further — High adds 20% (1.2×), Normal keeps it unchanged (1.0×), and Low cuts it by 40% (0.6×). Use this to promote your best comps and suppress outliers without excluding them entirely.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-4 h-4 text-primary shrink-0" />
+              <span className="font-semibold text-sm">Transparent Breakdown</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              The Contributing Comps table shows exactly which sold comps are driving the number — including each comp's weight and dollar contribution. Active remodeled listings appear separately as market context (competition), not as price inputs, since they haven't cleared the market yet.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Pencil className="w-4 h-4 text-primary shrink-0" />
+              <span className="font-semibold text-sm">Manual Override & Offer Flow</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              If your judgment differs from the model — local knowledge, unreported condition issues, a hot pocket — enter your own ARV in the override field and it replaces the calculated value everywhere. When you're satisfied with the ARV, click "Calculate Offer" to carry it into the Offer Calculator.
+            </p>
+          </div>
+        </div>
       </div>
 
     </div>
