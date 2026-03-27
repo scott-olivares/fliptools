@@ -43,8 +43,8 @@ export default function Dashboard() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Link href="/deals/new">
-            <Button className="shrink-0 gap-2">
+          <Link href="/deals/new" className="shrink-0">
+            <Button className="whitespace-nowrap gap-2 w-full md:w-auto px-5">
               <Plus className="w-4 h-4" />
               New Deal
             </Button>
