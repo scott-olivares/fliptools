@@ -15,8 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 function FieldInfo({ tip }: { tip: string }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
+      <TooltipTrigger type="button" className="inline-flex items-center cursor-help text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+        <Info className="w-3.5 h-3.5 shrink-0" />
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed">
         {tip}
