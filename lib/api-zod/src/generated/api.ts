@@ -79,6 +79,12 @@ export const GetDealResponse = zod.object({
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
   dataSource: zod.enum(["mock", "manual"]),
+  compRadiusMiles: zod.number().nullable(),
+  compMonthsBack: zod.number().nullable(),
+  compSqftPct: zod.number().nullable(),
+  compBedsRange: zod.number().nullable(),
+  compBathsRange: zod.number().nullable(),
+  compYearBuiltRange: zod.number().nullable(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
   comps: zod.array(
@@ -172,6 +178,12 @@ export const UpdateDealBody = zod.object({
   maxOffer: zod.number().nullish(),
   arvEstimate: zod.number().nullish(),
   projectedReturn: zod.number().nullish(),
+  compRadiusMiles: zod.number().nullish(),
+  compMonthsBack: zod.number().nullish(),
+  compSqftPct: zod.number().nullish(),
+  compBedsRange: zod.number().nullish(),
+  compBathsRange: zod.number().nullish(),
+  compYearBuiltRange: zod.number().nullish(),
 });
 
 export const UpdateDealResponse = zod.object({
@@ -190,6 +202,12 @@ export const UpdateDealResponse = zod.object({
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
   dataSource: zod.enum(["mock", "manual"]),
+  compRadiusMiles: zod.number().nullable(),
+  compMonthsBack: zod.number().nullable(),
+  compSqftPct: zod.number().nullable(),
+  compBedsRange: zod.number().nullable(),
+  compBathsRange: zod.number().nullable(),
+  compYearBuiltRange: zod.number().nullable(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });

@@ -132,7 +132,7 @@ export default function DealDetail() {
 
       {/* Tab Content */}
       <div className="pb-24">
-        {activeTab === "property" && <PropertyTab deal={deal} />}
+        {activeTab === "property" && <PropertyTab deal={deal} onCompsRefreshed={() => setActiveTab("comps")} />}
         {activeTab === "comps" && <CompsTab deal={deal} />}
         {activeTab === "arv" && <ArvTab deal={deal} arv={arv} onJumpToOffer={() => setActiveTab("offer")} />}
         {activeTab === "offer" && <OfferTab deal={deal} />}

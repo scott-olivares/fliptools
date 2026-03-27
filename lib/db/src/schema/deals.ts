@@ -18,6 +18,13 @@ export const dealsTable = pgTable("deals", {
   maxOffer: real("max_offer"),
   projectedReturn: real("projected_return"),
   dataSource: text("data_source").notNull().default("mock"),
+  // Comp search criteria
+  compRadiusMiles: real("comp_radius_miles").default(0.5),
+  compMonthsBack: integer("comp_months_back").default(6),
+  compSqftPct: integer("comp_sqft_pct").default(20),
+  compBedsRange: real("comp_beds_range").default(1),
+  compBathsRange: real("comp_baths_range").default(1),
+  compYearBuiltRange: integer("comp_year_built_range").default(10),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

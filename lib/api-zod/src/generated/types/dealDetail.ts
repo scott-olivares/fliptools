@@ -36,6 +36,18 @@ export interface DealDetail {
   /** @nullable */
   projectedReturn: number | null;
   dataSource: DealDetailDataSource;
+  /** @nullable */
+  compRadiusMiles: number | null;
+  /** @nullable */
+  compMonthsBack: number | null;
+  /** @nullable */
+  compSqftPct: number | null;
+  /** @nullable */
+  compBedsRange: number | null;
+  /** @nullable */
+  compBathsRange: number | null;
+  /** @nullable */
+  compYearBuiltRange: number | null;
   createdAt: Date;
   updatedAt: Date;
   comps: DealComp[];

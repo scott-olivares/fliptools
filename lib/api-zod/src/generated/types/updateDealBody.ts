@@ -34,4 +34,16 @@ export interface UpdateDealBody {
   arvEstimate?: number | null;
   /** @nullable */
   projectedReturn?: number | null;
+  /** @nullable */
+  compRadiusMiles?: number | null;
+  /** @nullable */
+  compMonthsBack?: number | null;
+  /** @nullable */
+  compSqftPct?: number | null;
+  /** @nullable */
+  compBedsRange?: number | null;
+  /** @nullable */
+  compBathsRange?: number | null;
+  /** @nullable */
+  compYearBuiltRange?: number | null;
 }

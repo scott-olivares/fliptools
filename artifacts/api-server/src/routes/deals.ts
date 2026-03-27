@@ -171,6 +171,52 @@ router.delete("/deals/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
+  const params = GetDealParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+  if (!deal) {
+    res.status(404).json({ error: "Deal not found" });
+    return;
+  }
+
+  const filters = {
+    radiusMiles: deal.compRadiusMiles ?? 0.5,
+    monthsBack: deal.compMonthsBack ?? 6,
+    sqftSimilarityPct: deal.compSqftPct ?? 20,
+    subjectSqft: deal.sqft ?? undefined,
+  };
+
+  const existingDealComps = await db
+    .select()
+    .from(dealCompsTable)
+    .where(eq(dealCompsTable.dealId, deal.id));
+
+  if (existingDealComps.length > 0) {
+    const compIds = existingDealComps.map((dc) => dc.compId);
+    await db.delete(dealCompsTable).where(eq(dealCompsTable.dealId, deal.id));
+    await db.delete(compsTable).where(inArray(compsTable.id, compIds));
+  }
+
+  const freshComps = await mockCompProvider.getCompsForProperty(deal.address, filters);
+  const insertedComps = await db.insert(compsTable).values(freshComps).returning();
+  for (const comp of insertedComps) {
+    await db.insert(dealCompsTable).values({
+      dealId: deal.id,
+      compId: comp.id,
+      included: true,
+      relevance: "normal",
+      notes: null,
+    });
+  }
+
+  res.json({ refreshed: insertedComps.length });
+});
+
 router.get("/deals/:id/arv", async (req, res): Promise<void> => {
   const params = CalculateArvParams.safeParse(req.params);
   if (!params.success) {
