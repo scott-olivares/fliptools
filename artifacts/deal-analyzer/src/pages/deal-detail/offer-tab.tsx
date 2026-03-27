@@ -5,11 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignalBadge } from "@/components/status-badge";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calculator, Save, AlertTriangle } from "lucide-react";
+import { Calculator, Save, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+function FieldInfo({ tip }: { tip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 type NumField = number | "";
 
@@ -110,32 +124,50 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">After Repair Value</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">After Repair Value</Label>
+                <FieldInfo tip="Estimated market value once fully renovated. Pulled from the ARV Engine — adjust there first, or type directly here." />
+              </div>
               <Input type="number" value={arv} onChange={e => setArv(parseField(e.target.value))} className="font-mono text-lg font-semibold border-primary/20 bg-primary/5" />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Rehab Budget</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Rehab Budget</Label>
+                <FieldInfo tip="Total cost to renovate the property to sellable condition — materials, labor, permits, everything." />
+              </div>
               <Input type="number" value={rehab} onChange={e => setRehab(parseField(e.target.value))} className="font-mono" />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Closing Costs (Buy)</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Closing Costs (Buy)</Label>
+                <FieldInfo tip="Costs at purchase close: title, escrow, lender fees, recording. Typically 1–3% of purchase price." />
+              </div>
               <Input type="number" value={closing} onChange={e => setClosing(parseField(e.target.value))} className="font-mono" />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Holding Costs</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Holding Costs</Label>
+                <FieldInfo tip="Ongoing costs while you own it: loan interest, taxes, insurance, utilities. Multiply monthly cost by expected hold time." />
+              </div>
               <Input type="number" value={holding} onChange={e => setHolding(parseField(e.target.value))} className="font-mono" />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Selling Costs</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Selling Costs</Label>
+                <FieldInfo tip="Costs to sell the finished property: agent commissions, seller-paid closing, staging. Typically 6–8% of ARV." />
+              </div>
               <Input type="number" value={selling} onChange={e => setSelling(parseField(e.target.value))} className="font-mono" />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Other / Contingency</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Other / Contingency</Label>
+                <FieldInfo tip="Buffer for surprises — permit overruns, hidden damage, scope creep. 5–10% of rehab budget is a common rule of thumb." />
+              </div>
               <Input type="number" value={other} onChange={e => setOther(parseField(e.target.value))} className="font-mono" />
             </div>
           </div>
@@ -144,11 +176,17 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
             <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
               <h4 className="font-semibold text-sm">Target Margins</h4>
               <div className="space-y-1">
-                <Label>Desired Profit ($)</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label>Desired Profit ($)</Label>
+                  <FieldInfo tip="Minimum dollar profit you need from this deal. Subtracted directly from ARV to set your max offer ceiling." />
+                </div>
                 <Input type="number" value={profit} onChange={e => setProfit(parseField(e.target.value))} className="font-mono" />
               </div>
               <div className="space-y-1">
-                <Label>Target Return (%)</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label>Target Return (%)</Label>
+                  <FieldInfo tip="Minimum ROI you'll accept. Affects the signal badge only — it does not change your max offer number." />
+                </div>
                 <Input type="number" value={targetReturn} onChange={e => setTargetReturn(parseField(e.target.value))} className="font-mono" />
               </div>
             </div>
@@ -156,7 +194,10 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
             <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 space-y-4">
               <h4 className="font-semibold text-sm text-primary">Scenario Testing</h4>
               <div className="space-y-1">
-                <Label>Override Purchase Price</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label>Override Purchase Price</Label>
+                  <FieldInfo tip="Test what your ROI looks like if you pay a different price — e.g. what if they counter at $350k? Leave blank to use Max Offer." />
+                </div>
                 <Input
                   type="number"
                   value={purchasePrice}
@@ -176,7 +217,10 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
         <Card className="border-primary shadow-md overflow-hidden relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
           <CardHeader className="pb-2">
-            <CardDescription className="uppercase tracking-wider font-semibold text-primary">Maximum Allowable Offer</CardDescription>
+            <CardDescription className="uppercase tracking-wider font-semibold text-primary flex items-center gap-1.5">
+              Maximum Allowable Offer
+              <FieldInfo tip="The most you can pay and still hit your profit target. Formula: ARV − Rehab − Closing − Holding − Selling − Other − Desired Profit." />
+            </CardDescription>
             <CardTitle className="text-5xl font-display tracking-tighter pt-2">
               {formatCurrency(maxOffer)}
             </CardTitle>
