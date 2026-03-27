@@ -91,25 +91,43 @@ export default function DealDetail() {
         </div>
       </div>
 
-      {/* Tabs Nav */}
-      <div className="flex space-x-1 border-b mb-6 overflow-x-auto hide-scrollbar">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "px-5 py-3 text-sm font-medium transition-all relative whitespace-nowrap",
-              activeTab === tab.id 
-                ? "text-primary" 
-                : "text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
-            )}
-          </button>
-        ))}
+      {/* Tabs Nav — 2×2 grid on mobile, single row on md+ */}
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-1 md:hidden bg-slate-100 p-1 rounded-xl">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "py-2.5 px-3 text-sm font-medium rounded-lg transition-all text-center",
+                activeTab === tab.id
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-slate-900"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="hidden md:flex space-x-1 border-b">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "px-5 py-3 text-sm font-medium transition-all relative whitespace-nowrap",
+                activeTab === tab.id
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab Content */}
