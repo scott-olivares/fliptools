@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { useRoute, Link, useLocation } from "wouter";
+import { useState } from "react";
+import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout";
-import { useGetDeal } from "@workspace/api-client-react";
+import { useGetDeal, useCalculateArv, getCalculateArvQueryKey } from "@workspace/api-client-react";
 import { DealStatusBadge } from "@/components/status-badge";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeft, Home, MapPin, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Import tabs
@@ -26,6 +26,9 @@ export default function DealDetail() {
   const [activeTab, setActiveTab] = useState("property");
   
   const { data: deal, isLoading, error } = useGetDeal(dealId);
+  // Always keep the ARV query mounted so it refetches in the background
+  // whenever comps are changed (comps tab invalidates this query key)
+  const { data: arv } = useCalculateArv(dealId, { query: { enabled: !!dealId } });
 
   if (isLoading) {
     return (
@@ -81,7 +84,7 @@ export default function DealDetail() {
             <div>
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Current ARV Est.</p>
               <p className="text-xl font-mono font-bold text-primary">
-                {formatCurrency(deal.arvOverride || deal.arvEstimate)}
+                {formatCurrency(deal.arvOverride || arv?.suggestedArv || deal.arvEstimate)}
               </p>
             </div>
           </div>
@@ -113,7 +116,7 @@ export default function DealDetail() {
       <div className="pb-24">
         {activeTab === "property" && <PropertyTab deal={deal} />}
         {activeTab === "comps" && <CompsTab deal={deal} />}
-        {activeTab === "arv" && <ArvTab deal={deal} onJumpToOffer={() => setActiveTab("offer")} />}
+        {activeTab === "arv" && <ArvTab deal={deal} arv={arv} onJumpToOffer={() => setActiveTab("offer")} />}
         {activeTab === "offer" && <OfferTab deal={deal} />}
       </div>
     </Layout>

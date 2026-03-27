@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useCalculateArv, useUpdateDeal } from "@workspace/api-client-react";
-import type { DealDetail } from "@workspace/api-client-react";
+import { useUpdateDeal } from "@workspace/api-client-react";
+import type { DealDetail, ARVResult } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Calculator, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export default function ArvTab({ deal, onJumpToOffer }: { deal: DealDetail, onJumpToOffer: () => void }) {
+export default function ArvTab({ deal, arv, onJumpToOffer }: { deal: DealDetail, arv: ARVResult | undefined, onJumpToOffer: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: arv, isLoading } = useCalculateArv(deal.id);
   const updateDeal = useUpdateDeal();
   
   const [overrideValue, setOverrideValue] = useState(deal.arvOverride?.toString() || "");
@@ -32,7 +31,7 @@ export default function ArvTab({ deal, onJumpToOffer }: { deal: DealDetail, onJu
     });
   };
 
-  if (isLoading || !arv) return <div className="p-8 text-center text-muted-foreground animate-pulse">Calculating weighted ARV...</div>;
+  if (!arv) return <div className="p-8 text-center text-muted-foreground animate-pulse">Calculating weighted ARV...</div>;
 
   const displayArv = deal.arvOverride || arv.suggestedArv;
   const isOverridden = !!deal.arvOverride;
