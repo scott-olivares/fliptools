@@ -2,9 +2,9 @@ import { useGetDealComps, useUpdateDealComp } from "@workspace/api-client-react"
 import type { DealDetail, DealComp } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Home } from "lucide-react";
 
 function ConditionBadge({ condition }: { condition: string }) {
   if (condition === 'remodeled') return <Badge variant="success">Remodeled</Badge>;
@@ -75,6 +75,33 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
               </tr>
             </thead>
             <tbody>
+              {/* Subject property row — always pinned at top */}
+              {(() => {
+                const subjectPpsqft = deal.askingPrice && deal.sqft ? deal.askingPrice / deal.sqft : null;
+                return (
+                  <tr className="bg-blue-50 border-b-2 border-blue-200">
+                    <td className="text-center">
+                      <Home className="w-4 h-4 text-blue-600 mx-auto" />
+                    </td>
+                    <td className="max-w-[200px]" title={deal.address}>
+                      <div className="font-semibold text-blue-900 truncate">{deal.address}</div>
+                      <div className="text-xs text-blue-600 font-semibold uppercase tracking-wide mt-0.5">Subject Property</div>
+                    </td>
+                    <td className="text-right font-mono font-semibold text-blue-900">
+                      {formatCurrency(deal.askingPrice)}
+                      <div className="text-xs text-blue-500 font-normal">asking</div>
+                    </td>
+                    <td className="text-right font-mono text-blue-700">{formatCurrency(subjectPpsqft)}</td>
+                    <td className="text-right font-mono text-blue-900">{formatNumber(deal.sqft)}</td>
+                    <td className="text-right font-mono text-blue-900">{deal.beds ?? '—'}/{deal.baths ?? '—'}</td>
+                    <td className="text-right font-mono text-blue-500">0.00mi</td>
+                    <td><Badge variant="primary">Subject</Badge></td>
+                    <td><span className="text-xs text-blue-400">—</span></td>
+                    <td><span className="text-xs text-blue-400">—</span></td>
+                  </tr>
+                );
+              })()}
+
               {compsList?.map((dc) => {
                 const c = dc.comp;
                 const ppsqft = c.salePrice && c.sqft ? c.salePrice / c.sqft : null;
