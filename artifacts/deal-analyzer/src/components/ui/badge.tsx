@@ -2,17 +2,18 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning";
+  variant?: "default" | "primary" | "secondary" | "destructive" | "outline" | "success" | "warning";
 }
 
 function Badge({ className, variant = "default", ...props }: BadgeProps) {
   const variants = {
-    default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-    secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-    destructive: "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20",
-    success: "border-transparent bg-success/15 text-success-foreground hover:bg-success/25",
-    warning: "border-transparent bg-warning/20 text-warning-foreground hover:bg-warning/30",
-    outline: "text-foreground",
+    default:     "border-transparent bg-slate-700 text-white hover:bg-slate-800",
+    primary:     "border-transparent bg-blue-600 text-white hover:bg-blue-700",
+    secondary:   "border-transparent bg-slate-200 text-slate-800 hover:bg-slate-300",
+    destructive: "border-transparent bg-red-600 text-white hover:bg-red-700",
+    success:     "border-transparent bg-emerald-600 text-white hover:bg-emerald-700",
+    warning:     "border-transparent bg-amber-500 text-amber-950 hover:bg-amber-600",
+    outline:     "border-slate-300 text-slate-700 bg-transparent",
   };
 
   return (
