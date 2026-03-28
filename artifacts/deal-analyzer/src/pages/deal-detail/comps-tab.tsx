@@ -1,15 +1,30 @@
+import { useState, useMemo } from "react";
 import { useGetDealComps, useUpdateDealComp } from "@workspace/api-client-react";
 import type { DealDetail, DealComp } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Circle, AlertCircle, Home } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Home, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+
+type SortKey = "address" | "ppsqft" | "beds" | "distance";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (col !== sortKey) return <ChevronsUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
+  return sortDir === "asc"
+    ? <ChevronUp className="w-3 h-3 opacity-70 inline ml-1" />
+    : <ChevronDown className="w-3 h-3 opacity-70 inline ml-1" />;
+}
 
 export default function CompsTab({ deal }: { deal: DealDetail }) {
   const queryClient = useQueryClient();
   const { data: compsList, isLoading } = useGetDealComps(deal.id);
   const updateComp = useUpdateDealComp();
+
+  const [weightOpen, setWeightOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("distance");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
@@ -17,130 +32,179 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
   };
 
   const toggleInclude = (comp: DealComp) => {
-    updateComp.mutate({
-      id: deal.id,
-      compId: comp.compId,
-      data: { included: !comp.included }
-    }, { onSuccess: invalidate });
+    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { included: !comp.included } }, { onSuccess: invalidate });
   };
 
-  const changeRelevance = (comp: DealComp, val: "high"|"normal"|"low") => {
-    updateComp.mutate({
-      id: deal.id,
-      compId: comp.compId,
-      data: { relevance: val }
-    }, { onSuccess: invalidate });
+  const changeRelevance = (comp: DealComp, val: "high" | "normal" | "low") => {
+    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { relevance: val } }, { onSuccess: invalidate });
   };
 
-  const changeCondition = (comp: DealComp, val: "remodeled"|"average"|"unknown") => {
-    updateComp.mutate({
-      id: deal.id,
-      compId: comp.compId,
-      data: { condition: val }
-    }, { onSuccess: invalidate });
+  const changeCondition = (comp: DealComp, val: "remodeled" | "average" | "unknown") => {
+    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { condition: val } }, { onSuccess: invalidate });
   };
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedComps = useMemo(() => {
+    if (!compsList) return [];
+    return [...compsList].sort((a, b) => {
+      let av: number | string = 0;
+      let bv: number | string = 0;
+      if (sortKey === "address") {
+        av = a.comp.address ?? "";
+        bv = b.comp.address ?? "";
+        return sortDir === "asc" ? (av as string).localeCompare(bv as string) : (bv as string).localeCompare(av as string);
+      }
+      if (sortKey === "ppsqft") {
+        av = a.comp.salePrice && a.comp.sqft ? a.comp.salePrice / a.comp.sqft : 0;
+        bv = b.comp.salePrice && b.comp.sqft ? b.comp.salePrice / b.comp.sqft : 0;
+      }
+      if (sortKey === "beds") {
+        av = (a.comp.beds ?? 0) * 10 + (a.comp.baths ?? 0);
+        bv = (b.comp.beds ?? 0) * 10 + (b.comp.baths ?? 0);
+      }
+      if (sortKey === "distance") {
+        av = a.comp.distanceMiles ?? 999;
+        bv = b.comp.distanceMiles ?? 999;
+      }
+      return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
+    });
+  }, [compsList, sortKey, sortDir]);
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading comps...</div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-4 items-start">
-        {/* Left: mock data notice (or spacer) */}
-        <div className="flex-1">
-          {deal.dataSource === 'mock' && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
-              <div>
-                <p className="font-semibold text-sm">Provider Notice: Sample Data</p>
-                <p className="text-sm opacity-90">These comps are generated for demonstration. In a production build, this would integrate with an MLS data provider via API.</p>
-              </div>
+      {/* Top bar: mock notice + collapsible weight guide */}
+      <div className="flex flex-col md:flex-row md:items-start gap-3">
+        {deal.dataSource === "mock" && (
+          <div className="flex-1 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+            <div>
+              <p className="font-semibold text-sm">Provider Notice: Sample Data</p>
+              <p className="text-sm opacity-90">These comps are generated for demonstration.</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        <div className="shrink-0">
+          <button
+            onClick={() => setWeightOpen((o) => !o)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors py-1.5 px-3 rounded-md border border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+          >
+            <span>Learn how weighting is calculated</span>
+            {weightOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
 
-        {/* Right: weight reference panel */}
-        <div className="shrink-0 md:w-auto">
-          <Card className="p-4 text-sm bg-slate-50 border-slate-200">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">How weights are calculated</p>
-            <div className="flex gap-6">
-              {/* Condition × Status grid */}
-              <div>
-                <p className="text-xs font-medium text-slate-500 mb-1.5">Base weight (Condition × Status)</p>
-                <table className="text-xs border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="text-left pr-3 pb-1 font-medium text-slate-500"></th>
-                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Sold</th>
-                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Pending</th>
-                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Active</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="pr-3 py-0.5 font-medium text-slate-700">Remodeled</td>
-                      <td className="text-center px-2 py-0.5 font-mono font-semibold text-emerald-700 bg-emerald-50 rounded">1.00</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-emerald-600 bg-emerald-50/60 rounded">0.85</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-500 rounded">0.30</td>
-                    </tr>
-                    <tr>
-                      <td className="pr-3 py-0.5 font-medium text-slate-700">Average</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-amber-600 bg-amber-50 rounded">0.35</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.30</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.10</td>
-                    </tr>
-                    <tr>
-                      <td className="pr-3 py-0.5 font-medium text-slate-700">Unknown</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.20</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.15</td>
-                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.05</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Relevance multipliers */}
-              <div className="border-l border-slate-200 pl-6">
-                <p className="text-xs font-medium text-slate-500 mb-1.5">Relevance multiplier</p>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-xs font-medium text-slate-700">High</span>
-                    <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-xs">× 1.2</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-xs font-medium text-slate-700">Normal</span>
-                    <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-xs">× 1.0</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-xs font-medium text-slate-700">Low</span>
-                    <span className="font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded text-xs">× 0.6</span>
-                  </div>
+          {weightOpen && (
+            <Card className="mt-2 p-4 text-sm bg-slate-50 border-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex gap-6 flex-wrap">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Base weight — Condition × Status</p>
+                  <table className="text-xs border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="text-left pr-4 pb-1.5 font-medium text-slate-400"></th>
+                        <th className="text-center px-2.5 pb-1.5 font-medium text-slate-500">Sold</th>
+                        <th className="text-center px-2.5 pb-1.5 font-medium text-slate-500">Pending</th>
+                        <th className="text-center px-2.5 pb-1.5 font-medium text-slate-500">Active</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr>
+                        <td className="pr-4 py-1 font-medium text-slate-700">Remodeled</td>
+                        <td className="text-center px-2.5 py-1 font-mono font-bold text-emerald-700 bg-emerald-50 rounded">1.00</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-emerald-600 bg-emerald-50/60 rounded">0.85</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.30</td>
+                      </tr>
+                      <tr>
+                        <td className="pr-4 py-1 font-medium text-slate-700">Average</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-amber-600 bg-amber-50 rounded">0.35</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.30</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.10</td>
+                      </tr>
+                      <tr>
+                        <td className="pr-4 py-1 font-medium text-slate-700">Unknown</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.20</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.15</td>
+                        <td className="text-center px-2.5 py-1 font-mono text-slate-400 rounded">0.05</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                <p className="text-xs text-slate-400 mt-3 max-w-[160px] leading-relaxed">Final weight = base × relevance. Higher weight = more influence on ARV.</p>
+
+                <div className="border-l border-slate-200 pl-6 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Relevance multiplier</p>
+                    <div className="space-y-1.5">
+                      {[
+                        { label: "High", val: "× 1.2", cls: "text-emerald-700 bg-emerald-50" },
+                        { label: "Normal", val: "× 1.0", cls: "text-slate-600 bg-slate-100" },
+                        { label: "Low", val: "× 0.6", cls: "text-slate-400 bg-slate-100" },
+                      ].map(({ label, val, cls }) => (
+                        <div key={label} className="flex items-center gap-2">
+                          <span className="w-14 text-xs font-medium text-slate-700">{label}</span>
+                          <span className={`font-mono font-semibold px-1.5 py-0.5 rounded text-xs ${cls}`}>{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-4 leading-relaxed max-w-[170px]">
+                    Final weight = base × relevance.<br />Higher = more pull on the ARV.
+                  </p>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
 
+      {/* Comps table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left data-dense-table">
             <thead>
               <tr>
                 <th className="w-12 text-center">Use</th>
-                <th>Address</th>
+                <th
+                  className="cursor-pointer select-none hover:text-primary transition-colors"
+                  onClick={() => toggleSort("address")}
+                >
+                  Address <SortIcon col="address" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="text-right">Price</th>
-                <th className="text-right">$/SqFt</th>
+                <th
+                  className="text-right cursor-pointer select-none hover:text-primary transition-colors"
+                  onClick={() => toggleSort("ppsqft")}
+                >
+                  $/SqFt <SortIcon col="ppsqft" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="text-right">SqFt</th>
-                <th className="text-right">Beds/Baths</th>
-                <th className="text-right">Distance</th>
+                <th
+                  className="text-right cursor-pointer select-none hover:text-primary transition-colors"
+                  onClick={() => toggleSort("beds")}
+                >
+                  Beds/Baths <SortIcon col="beds" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th
+                  className="text-right cursor-pointer select-none hover:text-primary transition-colors"
+                  onClick={() => toggleSort("distance")}
+                >
+                  Distance <SortIcon col="distance" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th>Status</th>
                 <th>Condition</th>
                 <th>Weighting</th>
               </tr>
             </thead>
             <tbody>
-              {/* Subject property row — always pinned at top */}
+              {/* Subject property pinned at top */}
               {(() => {
                 const subjectPpsqft = deal.askingPrice && deal.sqft ? deal.askingPrice / deal.sqft : null;
                 return (
@@ -158,7 +222,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                     </td>
                     <td className="text-right font-mono text-blue-700">{formatCurrency(subjectPpsqft)}</td>
                     <td className="text-right font-mono text-blue-900">{formatNumber(deal.sqft)}</td>
-                    <td className="text-right font-mono text-blue-900">{deal.beds ?? '—'}/{deal.baths ?? '—'}</td>
+                    <td className="text-right font-mono text-blue-900">{deal.beds ?? "—"}/{deal.baths ?? "—"}</td>
                     <td className="text-right font-mono text-blue-500">0.00mi</td>
                     <td><Badge variant="primary">Subject</Badge></td>
                     <td><span className="text-xs text-blue-400">—</span></td>
@@ -167,28 +231,24 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                 );
               })()}
 
-              {compsList?.map((dc) => {
+              {sortedComps.map((dc) => {
                 const c = dc.comp;
                 const ppsqft = c.salePrice && c.sqft ? c.salePrice / c.sqft : null;
-                
                 return (
                   <tr key={dc.id} className={!dc.included ? "bg-slate-50 opacity-60" : ""}>
                     <td className="text-center cursor-pointer" onClick={() => toggleInclude(dc)}>
-                      {dc.included ? 
-                        <CheckCircle2 className="w-5 h-5 text-primary mx-auto" /> : 
-                        <Circle className="w-5 h-5 text-slate-300 mx-auto" />
-                      }
+                      {dc.included
+                        ? <CheckCircle2 className="w-5 h-5 text-primary mx-auto" />
+                        : <Circle className="w-5 h-5 text-slate-300 mx-auto" />}
                     </td>
                     <td className="font-medium max-w-[200px] truncate" title={c.address}>{c.address}</td>
-                    <td className="text-right font-mono font-semibold">
-                      {formatCurrency(c.salePrice || c.listPrice)}
-                    </td>
+                    <td className="text-right font-mono font-semibold">{formatCurrency(c.salePrice || c.listPrice)}</td>
                     <td className="text-right font-mono text-muted-foreground">{formatCurrency(ppsqft)}</td>
                     <td className="text-right font-mono">{formatNumber(c.sqft)}</td>
                     <td className="text-right font-mono">{c.beds}/{c.baths}</td>
                     <td className="text-right font-mono">{c.distanceMiles?.toFixed(2)}mi</td>
                     <td>
-                      <Badge variant={c.listingStatus === 'sold' ? 'secondary' : c.listingStatus === 'active' ? 'outline' : 'warning'}>
+                      <Badge variant={c.listingStatus === "sold" ? "secondary" : c.listingStatus === "active" ? "outline" : "warning"}>
                         {c.listingStatus}
                       </Badge>
                     </td>
@@ -205,7 +265,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                       </select>
                     </td>
                     <td>
-                      <select 
+                      <select
                         className="text-xs bg-transparent border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary disabled:opacity-50"
                         value={dc.relevance}
                         onChange={(e) => changeRelevance(dc, e.target.value as any)}
