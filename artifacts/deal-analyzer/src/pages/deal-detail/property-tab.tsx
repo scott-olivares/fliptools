@@ -79,7 +79,8 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
   const onSubmit = async (data: FormValues) => {
     await updateMutation.mutateAsync({ id: deal.id, data });
 
-    const refreshRes = await fetch(`/api/deals/${deal.id}/comps/refresh`, { method: "POST" });
+    // ?force=true bypasses the server-side TTL because this is an explicit user action
+    const refreshRes = await fetch(`/api/deals/${deal.id}/comps/refresh?force=true`, { method: "POST" });
     const refreshData = await refreshRes.json();
 
     await queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}`] });

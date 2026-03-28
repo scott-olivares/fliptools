@@ -3,6 +3,17 @@ import type { CompFilters, CompProvider } from "./mockCompProvider.js";
 
 const RENTCAST_BASE = "https://api.rentcast.io/v1";
 
+// ─── Cost-protection: property lookup cache ──────────────────────────────────
+// Caches /v1/properties results by normalized address for 24 hours so that
+// re-selecting the same address on the New Deal form never double-bills.
+const PROPERTY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const propertyCache = new Map<string, { data: PropertyLookupResult; expiresAt: number }>();
+
+function cacheKey(address: string): string {
+  return address.trim().toLowerCase();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getApiKey(): string | null {
   return process.env.RENTCAST_API_KEY ?? null;
 }
@@ -85,6 +96,16 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("RENTCAST_API_KEY is not configured");
 
+  // ── Cost-protection: return cached result if still fresh ──────────────────
+  const key = cacheKey(address);
+  const cached = propertyCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    console.info(`[RentCast] cache hit — property lookup for "${address}"`);
+    return cached.data;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  console.info(`[RentCast] → GET /v1/properties  address="${address}"`);
   const url = `${RENTCAST_BASE}/properties?address=${encodeURIComponent(address)}&limit=1`;
   const response = await fetch(url, {
     headers: { "X-Api-Key": apiKey, Accept: "application/json" },
@@ -100,7 +121,7 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
   if (!data || data.length === 0) return null;
 
   const prop = data[0];
-  return {
+  const result: PropertyLookupResult = {
     beds: prop.bedrooms ?? null,
     baths: prop.bathrooms ?? null,
     sqft: prop.squareFootage ?? null,
@@ -112,6 +133,12 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
     lastSalePrice: prop.lastSalePrice ?? null,
     lastSaleDate: prop.lastSaleDate ?? null,
   };
+
+  // ── Cost-protection: store in cache ──────────────────────────────────────
+  propertyCache.set(key, { data: result, expiresAt: Date.now() + PROPERTY_CACHE_TTL_MS });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  return result;
 }
 
 export const rentcastCompProvider: CompProvider = {
@@ -134,6 +161,10 @@ export const rentcastCompProvider: CompProvider = {
       compCount: "20",
     });
 
+    // ── Cost-protection: log every outbound AVM call ───────────────────────
+    console.info(`[RentCast] → GET /v1/avm/value  address="${subjectAddress}"  radius=${radius}mi  daysOld=${daysOld}`);
+    // ─────────────────────────────────────────────────────────────────────────
+
     const url = `${RENTCAST_BASE}/avm/value?${params}`;
     const response = await fetch(url, {
       headers: { "X-Api-Key": apiKey, Accept: "application/json" },
@@ -151,6 +182,8 @@ export const rentcastCompProvider: CompProvider = {
 
     const data: RentCastAvmResponse = await response.json();
     if (!data.comparables || data.comparables.length === 0) return [];
+
+    console.info(`[RentCast] ← received ${data.comparables.length} comparables for "${subjectAddress}"`);
 
     return data.comparables.map((c): InsertComp => {
       // "Inactive" = listing removed (sold/off market). "Active"/"Pending" = still listed.

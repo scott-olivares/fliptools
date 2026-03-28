@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db, compsTable, dealCompsTable, dealsTable } from "@workspace/db";
 import {
   GetDealCompsParams,
@@ -32,9 +32,10 @@ router.get("/deals/:id/comps", async (req, res): Promise<void> => {
     .where(eq(dealCompsTable.dealId, params.data.id));
 
   const compIds = dealComps.map((dc) => dc.compId);
+  // Cost-protection: use inArray to fetch only this deal's comps, not the entire table
   const compsData =
     compIds.length > 0
-      ? (await db.select().from(compsTable)).filter((c) => compIds.includes(c.id))
+      ? await db.select().from(compsTable).where(inArray(compsTable.id, compIds))
       : [];
 
   const compMap = new Map(compsData.map((c) => [c.id, c]));

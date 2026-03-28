@@ -79,6 +79,10 @@ router.post("/deals", async (req, res): Promise<void> => {
           notes: null,
         });
       }
+      // Cost-protection: stamp fetch time so the refresh endpoint can enforce TTL
+      await db.update(dealsTable)
+        .set({ compsLastFetchedAt: new Date() })
+        .where(eq(dealsTable.id, deal.id));
     }
   } catch (err: any) {
     console.warn(`[deals] comp fetch failed (${provider.name}): ${err?.message}`);
@@ -195,6 +199,12 @@ router.delete("/deals/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+// Cost-protection: minimum time between RentCast comp fetches per deal (1 hour).
+// Pass ?force=true to bypass (e.g. when the user explicitly wants fresh data after
+// changing search criteria). Without force, repeated refreshes within the TTL window
+// return the existing cached comps at zero API cost.
+const COMP_REFRESH_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
   const params = GetDealParams.safeParse(req.params);
   if (!params.success) {
@@ -207,6 +217,19 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Deal not found" });
     return;
   }
+
+  // ── Cost-protection: TTL guard ─────────────────────────────────────────────
+  const force = req.query.force === "true";
+  if (!force && deal.compsLastFetchedAt) {
+    const ageMs = Date.now() - new Date(deal.compsLastFetchedAt).getTime();
+    if (ageMs < COMP_REFRESH_TTL_MS) {
+      const nextRefreshAt = new Date(new Date(deal.compsLastFetchedAt).getTime() + COMP_REFRESH_TTL_MS);
+      console.info(`[deals] comp refresh skipped for deal ${deal.id} — last fetched ${Math.round(ageMs / 60000)}m ago (TTL: 60m). Use ?force=true to override.`);
+      res.json({ refreshed: 0, cached: true, nextRefreshAt });
+      return;
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   const baseRadius = deal.compRadiusMiles ?? 0.5;
   const filters = {
@@ -268,8 +291,12 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     });
   }
 
+  // Cost-protection: stamp fetch time to enable TTL on future refreshes
   await db.update(dealsTable)
-    .set({ dataSource: provider.name === "RentCast" ? "rentcast" : "mock" })
+    .set({
+      dataSource: provider.name === "RentCast" ? "rentcast" : "mock",
+      compsLastFetchedAt: new Date(),
+    })
     .where(eq(dealsTable.id, deal.id));
 
   res.json({ refreshed: insertedComps.length });

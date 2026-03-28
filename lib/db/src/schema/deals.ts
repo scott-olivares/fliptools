@@ -25,6 +25,8 @@ export const dealsTable = pgTable("deals", {
   compBedsRange: real("comp_beds_range").default(1),
   compBathsRange: real("comp_baths_range").default(1),
   compYearBuiltRange: integer("comp_year_built_range").default(10),
+  // Cost-protection: track when comps were last fetched from RentCast
+  compsLastFetchedAt: timestamp("comps_last_fetched_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

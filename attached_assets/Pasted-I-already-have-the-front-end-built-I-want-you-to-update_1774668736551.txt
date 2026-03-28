@@ -1,0 +1,76 @@
+I already have the front end built. I want you to update the app architecture and data-fetching behavior to minimize RentCast API costs while keeping the experience fast and reliable.
+
+Context:
+- This app is for real estate investors analyzing properties and comps
+- RentCast charges based on API requests, so every unnecessary call matters
+- I want the app designed to avoid duplicate, automatic, or wasteful API requests
+
+Your goal:
+Optimize the app so it uses RentCast efficiently and predictably.
+
+Requirements:
+1. Only call RentCast when the user takes an intentional action
+   - Do not fetch on every keystroke
+   - Do not fetch repeatedly during typing
+   - Only fetch when the user submits a search or clicks a clear action button
+
+2. Prevent duplicate API calls
+   - Do not make the same RentCast request multiple times during the same screen load
+   - Avoid re-fetching just because a component re-renders
+   - Avoid duplicate calls on refresh if recent data is already available
+
+3. Add caching
+   - Cache search results by address / property ID / query parameters
+   - Reuse cached results for repeated lookups
+   - Add a reasonable TTL strategy so data can refresh after some period instead of being permanently stale
+   - Prefer server-side caching if possible
+   - If there is already a database in the app, store results there and read from it before calling RentCast again
+
+4. Use a “fetch core data first” approach
+   - Load only the minimum data needed for the initial result
+   - Do not automatically fetch every optional or secondary dataset
+   - Only fetch expanded details if the user asks for them, such as deeper comp details or additional metrics
+
+5. Reduce refresh waste
+   - If the user reloads the page shortly after a search, try to show cached data instead of immediately calling RentCast again
+   - Add an explicit Refresh Data action if needed, rather than auto-refreshing everything
+
+6. Debounce and guard user input
+   - If any search suggestions or live validation exist, debounce them properly
+   - Do not let rapid clicks or repeated submit actions create multiple identical requests
+   - Disable or guard repeat submissions while a request is already in flight
+
+7. Create a clean API usage layer
+   - Centralize RentCast requests in one service/module
+   - Make it easy to see where requests are happening
+   - Add logging so I can understand how many RentCast calls a user action creates
+   - Clearly comment the code where API cost protection is being handled
+
+8. Be thoughtful about comps flow
+   - If one user search can trigger multiple endpoint calls, reduce that where possible
+   - Try to structure the flow so a standard property analysis uses the fewest calls possible
+   - If there are expensive secondary calls, make them lazy-loaded or optional
+
+9. Add error handling and fallbacks
+   - Handle rate limits and API failures gracefully
+   - If cached data exists and the API fails, show cached data with a note that it may not be the newest
+   - Avoid retry loops that could accidentally increase cost
+
+10. Keep the UX clean
+   - The user should still feel the app is responsive
+   - Show loading states clearly
+   - Indicate when data is cached vs freshly pulled if helpful
+
+What I want from you:
+- Review the current codebase and identify where API requests may be happening too often
+- Refactor the data-fetching approach to reduce RentCast usage
+- Implement caching / deduping / guards where appropriate
+- Explain what you changed in plain English
+- Estimate how many RentCast requests a typical user search would generate after the optimization
+- Point out any tradeoffs between freshness and cost
+
+Important:
+- Do not rebuild the front end from scratch
+- Work with the existing UI
+- Focus specifically on API efficiency, request control, caching, and cost management
+- Keep the implementation practical and easy for me to maintain
