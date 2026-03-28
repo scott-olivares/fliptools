@@ -56,11 +56,18 @@ router.post("/deals", async (req, res): Promise<void> => {
 
   try {
     const filters = {
+      radiusMiles: 1.0,
       subjectSqft: deal.sqft ?? undefined,
       subjectBeds: deal.beds ?? undefined,
       subjectBaths: deal.baths ?? undefined,
     };
-    const comps = await provider.getCompsForProperty(deal.address, filters);
+    let comps = await provider.getCompsForProperty(deal.address, filters).catch(async (err: any) => {
+      if (provider.name === "RentCast") {
+        console.warn(`[deals] Initial comp fetch failed, retrying wider: ${err?.message}`);
+        return provider.getCompsForProperty(deal.address, { ...filters, radiusMiles: 2.0 });
+      }
+      throw err;
+    });
     if (comps.length > 0) {
       const insertedComps = await db.insert(compsTable).values(comps).returning();
       for (const comp of insertedComps) {
@@ -201,8 +208,9 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     return;
   }
 
+  const baseRadius = deal.compRadiusMiles ?? 1.0;
   const filters = {
-    radiusMiles: deal.compRadiusMiles ?? 0.5,
+    radiusMiles: baseRadius,
     monthsBack: deal.compMonthsBack ?? 6,
     sqftSimilarityPct: deal.compSqftPct ?? 20,
     subjectSqft: deal.sqft ?? undefined,
@@ -226,8 +234,22 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
   try {
     freshComps = await provider.getCompsForProperty(deal.address, filters);
   } catch (err: any) {
-    res.status(502).json({ error: `Comp provider error (${provider.name}): ${err?.message}` });
-    return;
+    // If RentCast fails (e.g. insufficient comps), retry with a wider radius
+    if (provider.name === "RentCast" && baseRadius < 5) {
+      try {
+        console.warn(`[deals] Retrying comp fetch with wider radius (${baseRadius * 2}mi)`);
+        freshComps = await provider.getCompsForProperty(deal.address, {
+          ...filters,
+          radiusMiles: Math.min(baseRadius * 2, 5),
+        });
+      } catch (retryErr: any) {
+        console.warn(`[deals] Retry also failed: ${retryErr?.message}`);
+        freshComps = [];
+      }
+    } else {
+      console.warn(`[deals] Comp provider error (${provider.name}): ${err?.message}`);
+      freshComps = [];
+    }
   }
 
   if (freshComps.length === 0) {

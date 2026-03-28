@@ -121,9 +121,12 @@ export const rentcastCompProvider: CompProvider = {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("RENTCAST_API_KEY is not configured");
 
-    const radius = filters?.radiusMiles ?? 0.5;
+    const radius = filters?.radiusMiles ?? 1.0;
     const daysOld = Math.min((filters?.monthsBack ?? 6) * 30, 365);
 
+    // /v1/avm/value uses its own correlation algorithm to select the best comps.
+    // Do NOT pass sqft/beds/baths filters — they over-constrain the AVM and cause
+    // "insufficient comparables" errors. Only scope by geography and recency.
     const params = new URLSearchParams({
       address: subjectAddress,
       maxRadius: String(radius),
@@ -131,24 +134,6 @@ export const rentcastCompProvider: CompProvider = {
       compCount: "20",
     });
 
-    if (filters?.subjectSqft) {
-      const sqft = filters.subjectSqft;
-      const pct = (filters.sqftSimilarityPct ?? 20) / 100;
-      params.set("squareFootageMin", String(Math.round(sqft * (1 - pct))));
-      params.set("squareFootageMax", String(Math.round(sqft * (1 + pct))));
-    }
-
-    if (filters?.subjectBeds != null) {
-      params.set("bedroomsMin", String(Math.max(0, filters.subjectBeds - 1)));
-      params.set("bedroomsMax", String(filters.subjectBeds + 1));
-    }
-
-    if (filters?.subjectBaths != null) {
-      params.set("bathroomsMin", String(Math.max(0, filters.subjectBaths - 1)));
-      params.set("bathroomsMax", String(filters.subjectBaths + 1));
-    }
-
-    // /v1/avm/value returns both the AVM price AND a comparables array
     const url = `${RENTCAST_BASE}/avm/value?${params}`;
     const response = await fetch(url, {
       headers: { "X-Api-Key": apiKey, Accept: "application/json" },
