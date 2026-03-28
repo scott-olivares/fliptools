@@ -47,15 +47,21 @@ interface RentCastComp {
   yearBuilt?: number;
   propertyType?: string;
   price?: number;
+  status?: string;       // "Active" | "Inactive" | "Pending"
+  listingType?: string;
   listedDate?: string;
-  removedDate?: string;
-  lastSaleDate?: string;
+  removedDate?: string;  // date listing was removed (proxy for sale date)
+  lastSeenDate?: string;
   distance?: number;
+  daysOld?: number;
   correlation?: number;
 }
 
-interface RentCastComparablesResponse {
-  comparables: RentCastComp[];
+interface RentCastAvmResponse {
+  price?: number;
+  priceRangeLow?: number;
+  priceRangeHigh?: number;
+  comparables?: RentCastComp[];
 }
 
 export interface PropertyLookupResult {
@@ -142,13 +148,15 @@ export const rentcastCompProvider: CompProvider = {
       params.set("bathroomsMax", String(filters.subjectBaths + 1));
     }
 
-    const url = `${RENTCAST_BASE}/avm/sale/comparables?${params}`;
+    // /v1/avm/value returns both the AVM price AND a comparables array
+    const url = `${RENTCAST_BASE}/avm/value?${params}`;
     const response = await fetch(url, {
       headers: { "X-Api-Key": apiKey, Accept: "application/json" },
     });
 
     if (!response.ok) {
       if (response.status === 401) throw new Error("Invalid RentCast API key");
+      if (response.status === 404) return []; // no AVM data for this address
       if (response.status === 400) {
         const body = await response.text().catch(() => "");
         throw new Error(`RentCast comp lookup failed: ${body || response.status}`);
@@ -156,26 +164,35 @@ export const rentcastCompProvider: CompProvider = {
       throw new Error(`RentCast API error ${response.status}`);
     }
 
-    const data: RentCastComparablesResponse = await response.json();
+    const data: RentCastAvmResponse = await response.json();
     if (!data.comparables || data.comparables.length === 0) return [];
 
-    return data.comparables.map((c): InsertComp => ({
-      address: c.formattedAddress,
-      salePrice: c.price ?? null,
-      listPrice: null,
-      sqft: c.squareFootage ?? null,
-      lotSize: lotSqftToAcres(c.lotSize),
-      beds: c.bedrooms ?? null,
-      baths: c.bathrooms ?? null,
-      distanceMiles: c.distance ?? null,
-      soldDate: c.removedDate || c.lastSaleDate || c.listedDate || null,
-      listingStatus: "sold",
-      propertyType: mapPropertyType(c.propertyType),
-      condition: "unknown",
-      source: "rentcast",
-      latitude: c.latitude ?? null,
-      longitude: c.longitude ?? null,
-      dataSource: "rentcast",
-    }));
+    return data.comparables.map((c): InsertComp => {
+      // "Inactive" = listing removed (sold/off market). "Active"/"Pending" = still listed.
+      const statusLower = (c.status ?? "").toLowerCase();
+      const isSold = statusLower === "inactive" || statusLower === "sold";
+      const isPending = statusLower === "pending";
+      const listingStatus = isSold ? "sold" : isPending ? "pending" : "active";
+      const soldDate = isSold ? (c.removedDate ?? c.lastSeenDate ?? null) : null;
+
+      return {
+        address: c.formattedAddress,
+        salePrice: isSold ? (c.price ?? null) : null,
+        listPrice: !isSold ? (c.price ?? null) : null,
+        sqft: c.squareFootage ?? null,
+        lotSize: lotSqftToAcres(c.lotSize),
+        beds: c.bedrooms ?? null,
+        baths: c.bathrooms ?? null,
+        distanceMiles: c.distance ?? null,
+        soldDate,
+        listingStatus,
+        propertyType: mapPropertyType(c.propertyType),
+        condition: "unknown",
+        source: "rentcast",
+        latitude: c.latitude ?? null,
+        longitude: c.longitude ?? null,
+        dataSource: "rentcast",
+      };
+    });
   },
 };

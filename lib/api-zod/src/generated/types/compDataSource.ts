@@ -12,4 +12,5 @@ export type CompDataSource =
 export const CompDataSource = {
   mock: "mock",
   manual: "manual",
+  rentcast: "rentcast",
 } as const;

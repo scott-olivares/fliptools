@@ -12,4 +12,5 @@ export type DealDetailDataSource =
 export const DealDetailDataSource = {
   mock: "mock",
   manual: "manual",
+  rentcast: "rentcast",
 } as const;

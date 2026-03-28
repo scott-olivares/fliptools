@@ -35,6 +35,7 @@ export type DealDataSource =
 export const DealDataSource = {
   mock: "mock",
   manual: "manual",
+  rentcast: "rentcast",
 } as const;
 
 export interface Deal {
@@ -84,6 +85,7 @@ export type DealDetailDataSource =
 export const DealDetailDataSource = {
   mock: "mock",
   manual: "manual",
+  rentcast: "rentcast",
 } as const;
 
 export type DealCompRelevance =
@@ -118,6 +120,7 @@ export type CompDataSource =
 export const CompDataSource = {
   mock: "mock",
   manual: "manual",
+  rentcast: "rentcast",
 } as const;
 
 export interface Comp {

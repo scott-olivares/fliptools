@@ -77,7 +77,7 @@ router.post("/deals", async (req, res): Promise<void> => {
     console.warn(`[deals] comp fetch failed (${provider.name}): ${err?.message}`);
   }
 
-  res.status(201).json(GetDealResponse.parse(deal));
+  res.status(201).json(deal);
 });
 
 router.get("/deals/:id", async (req, res): Promise<void> => {
