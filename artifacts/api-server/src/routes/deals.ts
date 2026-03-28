@@ -74,7 +74,7 @@ router.post("/deals", async (req, res): Promise<void> => {
         await db.insert(dealCompsTable).values({
           dealId: deal.id,
           compId: comp.id,
-          included: true,
+          included: (comp.distanceMiles ?? 999) <= 0.5,
           relevance: "normal",
           notes: null,
         });
@@ -262,7 +262,7 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     await db.insert(dealCompsTable).values({
       dealId: deal.id,
       compId: comp.id,
-      included: true,
+      included: (comp.distanceMiles ?? 999) <= 0.5,
       relevance: "normal",
       notes: null,
     });
