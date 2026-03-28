@@ -25,6 +25,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
   const [weightOpen, setWeightOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("distance");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [maxDistance, setMaxDistance] = useState(0.5);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
@@ -52,9 +53,13 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
     }
   };
 
+  const allCompsCount = compsList?.length ?? 0;
+
   const sortedComps = useMemo(() => {
     if (!compsList) return [];
-    return [...compsList].sort((a, b) => {
+    return [...compsList]
+      .filter((dc) => (dc.comp.distanceMiles ?? 0) <= maxDistance)
+      .sort((a, b) => {
       let av: number | string = 0;
       let bv: number | string = 0;
       if (sortKey === "address") {
@@ -76,7 +81,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
       }
       return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
-  }, [compsList, sortKey, sortDir]);
+  }, [compsList, sortKey, sortDir, maxDistance]);
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading comps...</div>;
 
@@ -163,6 +168,26 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
             </Card>
           )}
         </div>
+      </div>
+
+      {/* Distance filter bar */}
+      <div className="flex items-center gap-4 px-1">
+        <span className="text-xs font-medium text-slate-500 shrink-0">Max distance</span>
+        <input
+          type="range"
+          min={0.1}
+          max={5}
+          step={0.1}
+          value={maxDistance}
+          onChange={(e) => setMaxDistance(parseFloat(e.target.value))}
+          className="flex-1 max-w-xs h-1.5 appearance-none bg-slate-200 rounded-full accent-primary cursor-pointer"
+        />
+        <span className="text-xs font-mono font-semibold text-primary w-14 shrink-0">
+          {maxDistance.toFixed(1)} mi
+        </span>
+        <span className="text-xs text-slate-400 shrink-0">
+          {sortedComps.length} of {allCompsCount} comp{allCompsCount !== 1 ? "s" : ""} shown
+        </span>
       </div>
 
       {/* Comps table */}

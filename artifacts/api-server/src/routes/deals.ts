@@ -56,7 +56,7 @@ router.post("/deals", async (req, res): Promise<void> => {
 
   try {
     const filters = {
-      radiusMiles: 1.0,
+      radiusMiles: 0.5,
       subjectSqft: deal.sqft ?? undefined,
       subjectBeds: deal.beds ?? undefined,
       subjectBaths: deal.baths ?? undefined,
@@ -208,7 +208,7 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     return;
   }
 
-  const baseRadius = deal.compRadiusMiles ?? 1.0;
+  const baseRadius = deal.compRadiusMiles ?? 0.5;
   const filters = {
     radiusMiles: baseRadius,
     monthsBack: deal.compMonthsBack ?? 6,

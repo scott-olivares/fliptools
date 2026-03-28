@@ -121,7 +121,7 @@ export const rentcastCompProvider: CompProvider = {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("RENTCAST_API_KEY is not configured");
 
-    const radius = filters?.radiusMiles ?? 1.0;
+    const radius = filters?.radiusMiles ?? 0.5;
     const daysOld = Math.min((filters?.monthsBack ?? 6) * 30, 365);
 
     // /v1/avm/value uses its own correlation algorithm to select the best comps.

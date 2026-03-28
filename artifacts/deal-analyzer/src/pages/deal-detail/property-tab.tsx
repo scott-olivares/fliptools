@@ -65,7 +65,7 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
       lotSize: deal.lotSize,
       yearBuilt: deal.yearBuilt,
       notes: deal.notes || "",
-      compRadiusMiles: deal.compRadiusMiles ?? 1.0,
+      compRadiusMiles: deal.compRadiusMiles ?? 0.5,
       compMonthsBack: deal.compMonthsBack ?? 6,
       compSqftPct: deal.compSqftPct ?? 20,
       compBedsRange: deal.compBedsRange ?? 1,
