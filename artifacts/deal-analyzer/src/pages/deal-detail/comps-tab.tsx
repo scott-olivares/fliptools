@@ -6,28 +6,22 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, AlertCircle, Home } from "lucide-react";
 
-function ConditionBadge({ condition }: { condition: string }) {
-  if (condition === 'remodeled') return <Badge variant="success">Remodeled</Badge>;
-  if (condition === 'average') return <Badge variant="warning">Average</Badge>;
-  return <Badge variant="secondary">Unknown</Badge>;
-}
-
 export default function CompsTab({ deal }: { deal: DealDetail }) {
   const queryClient = useQueryClient();
   const { data: compsList, isLoading } = useGetDealComps(deal.id);
   const updateComp = useUpdateDealComp();
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/arv`] });
+  };
 
   const toggleInclude = (comp: DealComp) => {
     updateComp.mutate({
       id: deal.id,
       compId: comp.compId,
       data: { included: !comp.included }
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/arv`] });
-      }
-    });
+    }, { onSuccess: invalidate });
   };
 
   const changeRelevance = (comp: DealComp, val: "high"|"normal"|"low") => {
@@ -35,12 +29,15 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
       id: deal.id,
       compId: comp.compId,
       data: { relevance: val }
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/arv`] });
-      }
-    });
+    }, { onSuccess: invalidate });
+  };
+
+  const changeCondition = (comp: DealComp, val: "remodeled"|"average"|"unknown") => {
+    updateComp.mutate({
+      id: deal.id,
+      compId: comp.compId,
+      data: { condition: val }
+    }, { onSuccess: invalidate });
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading comps...</div>;
@@ -127,7 +124,18 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                         {c.listingStatus}
                       </Badge>
                     </td>
-                    <td><ConditionBadge condition={c.condition} /></td>
+                    <td>
+                      <select
+                        className="text-xs bg-transparent border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary disabled:opacity-50"
+                        value={c.condition}
+                        onChange={(e) => changeCondition(dc, e.target.value as any)}
+                        disabled={!dc.included}
+                      >
+                        <option value="remodeled">Remodeled</option>
+                        <option value="average">Average</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                    </td>
                     <td>
                       <select 
                         className="text-xs bg-transparent border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary disabled:opacity-50"

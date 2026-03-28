@@ -308,6 +308,14 @@ export const UpdateDealCompBody = zod.object({
     ])
     .nullish(),
   notes: zod.string().nullish(),
+  condition: zod
+    .union([
+      zod.literal("remodeled"),
+      zod.literal("average"),
+      zod.literal("unknown"),
+      zod.literal(null),
+    ])
+    .nullish(),
 });
 
 export const UpdateDealCompResponse = zod.object({

@@ -385,6 +385,19 @@ export const UpdateDealCompBodyRelevance = {
   low: "low",
 } as const;
 
+/**
+ * @nullable
+ */
+export type UpdateDealCompBodyCondition =
+  | (typeof UpdateDealCompBodyCondition)[keyof typeof UpdateDealCompBodyCondition]
+  | null;
+
+export const UpdateDealCompBodyCondition = {
+  remodeled: "remodeled",
+  average: "average",
+  unknown: "unknown",
+} as const;
+
 export interface UpdateDealCompBody {
   /** @nullable */
   included?: boolean | null;
@@ -392,6 +405,8 @@ export interface UpdateDealCompBody {
   relevance?: UpdateDealCompBodyRelevance;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  condition?: UpdateDealCompBodyCondition;
 }
 
 export interface ARVContributingComp {

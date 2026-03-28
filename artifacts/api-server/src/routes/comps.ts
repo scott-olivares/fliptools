@@ -126,34 +126,59 @@ router.patch("/deals/:id/comps/:compId", async (req, res): Promise<void> => {
     return;
   }
 
-  const updateData: Record<string, unknown> = {};
+  const dealCompUpdate: Record<string, unknown> = {};
   if (parsed.data.included !== undefined && parsed.data.included !== null) {
-    updateData.included = parsed.data.included;
+    dealCompUpdate.included = parsed.data.included;
   }
   if (parsed.data.relevance !== undefined && parsed.data.relevance !== null) {
-    updateData.relevance = parsed.data.relevance;
+    dealCompUpdate.relevance = parsed.data.relevance;
   }
   if (parsed.data.notes !== undefined) {
-    updateData.notes = parsed.data.notes;
+    dealCompUpdate.notes = parsed.data.notes;
   }
 
-  const [dealComp] = await db
-    .update(dealCompsTable)
-    .set(updateData as any)
-    .where(
-      and(
-        eq(dealCompsTable.dealId, params.data.id),
-        eq(dealCompsTable.compId, params.data.compId)
+  // Only update dealCompsTable if there's something to change there
+  let dealComp;
+  if (Object.keys(dealCompUpdate).length > 0) {
+    [dealComp] = await db
+      .update(dealCompsTable)
+      .set(dealCompUpdate as any)
+      .where(
+        and(
+          eq(dealCompsTable.dealId, params.data.id),
+          eq(dealCompsTable.compId, params.data.compId)
+        )
       )
-    )
-    .returning();
+      .returning();
+  } else {
+    [dealComp] = await db
+      .select()
+      .from(dealCompsTable)
+      .where(
+        and(
+          eq(dealCompsTable.dealId, params.data.id),
+          eq(dealCompsTable.compId, params.data.compId)
+        )
+      );
+  }
 
   if (!dealComp) {
     res.status(404).json({ error: "DealComp not found" });
     return;
   }
 
-  const [comp] = await db.select().from(compsTable).where(eq(compsTable.id, dealComp.compId));
+  // condition lives on the comp record itself, update it separately
+  let comp;
+  if (parsed.data.condition !== undefined && parsed.data.condition !== null) {
+    [comp] = await db
+      .update(compsTable)
+      .set({ condition: parsed.data.condition })
+      .where(eq(compsTable.id, dealComp.compId))
+      .returning();
+  } else {
+    [comp] = await db.select().from(compsTable).where(eq(compsTable.id, dealComp.compId));
+  }
+
   res.json({ ...dealComp, comp });
 });
 
