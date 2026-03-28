@@ -93,7 +93,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
             </div>
           </div>
         )}
-        <div className="shrink-0">
+        <div className="shrink-0 md:ml-auto">
           <button
             onClick={() => setWeightOpen((o) => !o)}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors py-1.5 px-3 rounded-md border border-primary/20 hover:border-primary/40 hover:bg-primary/5"
