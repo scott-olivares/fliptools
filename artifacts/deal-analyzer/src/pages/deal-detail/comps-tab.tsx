@@ -43,16 +43,84 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading comps...</div>;
 
   return (
-    <div className="space-y-6">
-      {deal.dataSource === 'mock' && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
-          <div>
-            <p className="font-semibold text-sm">Provider Notice: Sample Data</p>
-            <p className="text-sm opacity-90">These comps are generated for demonstration. In a production build, this would integrate with an MLS data provider via API.</p>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
+        {/* Left: mock data notice (or spacer) */}
+        <div className="flex-1">
+          {deal.dataSource === 'mock' && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+              <div>
+                <p className="font-semibold text-sm">Provider Notice: Sample Data</p>
+                <p className="text-sm opacity-90">These comps are generated for demonstration. In a production build, this would integrate with an MLS data provider via API.</p>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right: weight reference panel */}
+        <div className="shrink-0 md:w-auto">
+          <Card className="p-4 text-sm bg-slate-50 border-slate-200">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">How weights are calculated</p>
+            <div className="flex gap-6">
+              {/* Condition × Status grid */}
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-1.5">Base weight (Condition × Status)</p>
+                <table className="text-xs border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left pr-3 pb-1 font-medium text-slate-500"></th>
+                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Sold</th>
+                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Pending</th>
+                      <th className="text-center px-2 pb-1 font-medium text-slate-500">Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="pr-3 py-0.5 font-medium text-slate-700">Remodeled</td>
+                      <td className="text-center px-2 py-0.5 font-mono font-semibold text-emerald-700 bg-emerald-50 rounded">1.00</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-emerald-600 bg-emerald-50/60 rounded">0.85</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-500 rounded">0.30</td>
+                    </tr>
+                    <tr>
+                      <td className="pr-3 py-0.5 font-medium text-slate-700">Average</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-amber-600 bg-amber-50 rounded">0.35</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.30</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.10</td>
+                    </tr>
+                    <tr>
+                      <td className="pr-3 py-0.5 font-medium text-slate-700">Unknown</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.20</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.15</td>
+                      <td className="text-center px-2 py-0.5 font-mono text-slate-400 rounded">0.05</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Relevance multipliers */}
+              <div className="border-l border-slate-200 pl-6">
+                <p className="text-xs font-medium text-slate-500 mb-1.5">Relevance multiplier</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-xs font-medium text-slate-700">High</span>
+                    <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-xs">× 1.2</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-xs font-medium text-slate-700">Normal</span>
+                    <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-xs">× 1.0</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-xs font-medium text-slate-700">Low</span>
+                    <span className="font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded text-xs">× 0.6</span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 mt-3 max-w-[160px] leading-relaxed">Final weight = base × relevance. Higher weight = more influence on ARV.</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
