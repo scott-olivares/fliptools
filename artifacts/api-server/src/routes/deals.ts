@@ -22,6 +22,45 @@ function activeCompProvider() {
   return isRentCastConfigured() ? rentcastCompProvider : mockCompProvider;
 }
 
+/**
+ * Determines whether a comp should be auto-selected (included) based on the
+ * deal's Comp Search Criteria from the Property Info tab.
+ * A comp is included only if it passes EVERY criterion for which both the
+ * subject and the comp have a value. If either side is null we give the
+ * comp the benefit of the doubt and don't filter on that criterion.
+ * Note: year_built is not stored on comps, so that filter is skipped here
+ * (it is still shown as a UI hint for the user to manually evaluate).
+ */
+function shouldIncludeComp(
+  deal: { sqft?: number | null; beds?: number | null; baths?: number | null;
+          compRadiusMiles?: number | null; compSqftPct?: number | null;
+          compBedsRange?: number | null; compBathsRange?: number | null },
+  comp: { distanceMiles?: number | null; sqft?: number | null;
+          beds?: number | null; baths?: number | null }
+): boolean {
+  const radius = deal.compRadiusMiles ?? 0.5;
+  // Distance must always be within the search radius
+  if ((comp.distanceMiles ?? 999) > radius) return false;
+
+  // SqFt: within ±compSqftPct% of subject sqft
+  if (deal.sqft && comp.sqft) {
+    const pct = (deal.compSqftPct ?? 20) / 100;
+    if (Math.abs(comp.sqft - deal.sqft) > deal.sqft * pct) return false;
+  }
+
+  // Beds: within ±compBedsRange of subject beds
+  if (deal.beds != null && comp.beds != null) {
+    if (Math.abs(comp.beds - deal.beds) > (deal.compBedsRange ?? 1)) return false;
+  }
+
+  // Baths: within ±compBathsRange of subject baths
+  if (deal.baths != null && comp.baths != null) {
+    if (Math.abs(comp.baths - deal.baths) > (deal.compBathsRange ?? 1)) return false;
+  }
+
+  return true;
+}
+
 const router: IRouter = Router();
 
 router.get("/deals", async (_req, res): Promise<void> => {
@@ -74,7 +113,7 @@ router.post("/deals", async (req, res): Promise<void> => {
         await db.insert(dealCompsTable).values({
           dealId: deal.id,
           compId: comp.id,
-          included: (comp.distanceMiles ?? 999) <= 0.5,
+          included: shouldIncludeComp(deal, comp),
           relevance: "normal",
           notes: null,
         });
@@ -285,7 +324,7 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     await db.insert(dealCompsTable).values({
       dealId: deal.id,
       compId: comp.id,
-      included: (comp.distanceMiles ?? 999) <= 0.5,
+      included: shouldIncludeComp(deal, comp),
       relevance: "normal",
       notes: null,
     });
