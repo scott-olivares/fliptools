@@ -183,9 +183,18 @@ export const rentcastCompProvider: CompProvider = {
     const data: RentCastAvmResponse = await response.json();
     if (!data.comparables || data.comparables.length === 0) return [];
 
-    console.info(`[RentCast] ← received ${data.comparables.length} comparables for "${subjectAddress}"`);
+    // Guard: strip out the subject property if RentCast ever returns it as its own comp
+    const normalizedSubject = subjectAddress.trim().toLowerCase();
+    const comparables = data.comparables.filter(
+      (c) => c.formattedAddress.trim().toLowerCase() !== normalizedSubject
+    );
+    if (comparables.length < data.comparables.length) {
+      console.warn(`[RentCast] filtered out subject property from its own comparables: "${subjectAddress}"`);
+    }
 
-    return data.comparables.map((c): InsertComp => {
+    console.info(`[RentCast] ← received ${comparables.length} comparables for "${subjectAddress}"`);
+
+    return comparables.map((c): InsertComp => {
       // "Inactive" = listing removed (sold/off market). "Active"/"Pending" = still listed.
       const statusLower = (c.status ?? "").toLowerCase();
       const isSold = statusLower === "inactive" || statusLower === "sold";
