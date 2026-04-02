@@ -72,8 +72,10 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
           return sortDir === "asc" ? (av as string).localeCompare(bv as string) : (bv as string).localeCompare(av as string);
         }
         if (sortKey === "ppsqft") {
-          av = a.comp.salePrice && a.comp.sqft ? a.comp.salePrice / a.comp.sqft : 0;
-          bv = b.comp.salePrice && b.comp.sqft ? b.comp.salePrice / b.comp.sqft : 0;
+          const ap = a.comp.salePrice ?? a.comp.listPrice;
+          const bp = b.comp.salePrice ?? b.comp.listPrice;
+          av = ap && a.comp.sqft ? ap / a.comp.sqft : 0;
+          bv = bp && b.comp.sqft ? bp / b.comp.sqft : 0;
         }
         if (sortKey === "beds") {
           av = (a.comp.beds ?? 0) * 10 + (a.comp.baths ?? 0);
@@ -262,7 +264,9 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
 
               {sortedComps.map((dc) => {
                 const c = dc.comp;
-                const ppsqft = c.salePrice && c.sqft ? c.salePrice / c.sqft : null;
+                const effectivePrice = c.salePrice ?? c.listPrice;
+                const ppsqft = effectivePrice && c.sqft ? effectivePrice / c.sqft : null;
+                const isListPrice = !c.salePrice && !!c.listPrice;
                 return (
                   <tr key={dc.id} className={!dc.included ? "bg-slate-50 opacity-60" : ""}>
                     <td className="text-center cursor-pointer" onClick={() => toggleInclude(dc)}>
@@ -271,7 +275,12 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                         : <Circle className="w-5 h-5 text-slate-300 mx-auto" />}
                     </td>
                     <td className="font-medium max-w-[200px] truncate" title={c.address}>{c.address}</td>
-                    <td className="text-right font-mono font-semibold">{formatCurrency(c.salePrice || c.listPrice)}</td>
+                    <td className="text-right">
+                      <span className="font-mono font-semibold">{formatCurrency(effectivePrice)}</span>
+                      {isListPrice && (
+                        <span className="ml-1 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">list</span>
+                      )}
+                    </td>
                     <td className="text-right font-mono text-muted-foreground">{formatCurrency(ppsqft)}</td>
                     <td className="text-right font-mono">{formatNumber(c.sqft)}</td>
                     <td className="text-right font-mono">{c.beds}/{c.baths}</td>
