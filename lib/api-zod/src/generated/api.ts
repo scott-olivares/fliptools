@@ -34,6 +34,7 @@ export const ListDealsResponseItem = zod.object({
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
   dataSource: zod.enum(["mock", "manual", "rentcast"]),
+  propertyType: zod.string(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -51,6 +52,7 @@ export const CreateDealBody = zod.object({
   lotSize: zod.number().nullish(),
   yearBuilt: zod.number().nullish(),
   notes: zod.string().nullish(),
+  propertyType: zod.string().nullish(),
   status: zod
     .enum(["new", "reviewing", "offer_submitted", "passed", "closed"])
     .optional(),
@@ -79,6 +81,7 @@ export const GetDealResponse = zod.object({
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
   dataSource: zod.enum(["mock", "manual", "rentcast"]),
+  propertyType: zod.string(),
   compRadiusMiles: zod.number().nullable(),
   compMonthsBack: zod.number().nullable(),
   compSqftPct: zod.number().nullable(),
@@ -164,6 +167,7 @@ export const UpdateDealBody = zod.object({
   lotSize: zod.number().nullish(),
   yearBuilt: zod.number().nullish(),
   notes: zod.string().nullish(),
+  propertyType: zod.string().nullish(),
   status: zod
     .union([
       zod.literal("new"),
@@ -202,6 +206,7 @@ export const UpdateDealResponse = zod.object({
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
   dataSource: zod.enum(["mock", "manual", "rentcast"]),
+  propertyType: zod.string(),
   compRadiusMiles: zod.number().nullable(),
   compMonthsBack: zod.number().nullable(),
   compSqftPct: zod.number().nullable(),

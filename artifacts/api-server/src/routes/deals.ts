@@ -34,13 +34,20 @@ function activeCompProvider() {
 function shouldIncludeComp(
   deal: { sqft?: number | null; beds?: number | null; baths?: number | null;
           compRadiusMiles?: number | null; compSqftPct?: number | null;
-          compBedsRange?: number | null; compBathsRange?: number | null },
+          compBedsRange?: number | null; compBathsRange?: number | null;
+          propertyType?: string | null },
   comp: { distanceMiles?: number | null; sqft?: number | null;
-          beds?: number | null; baths?: number | null }
+          beds?: number | null; baths?: number | null;
+          propertyType?: string | null }
 ): boolean {
   const radius = deal.compRadiusMiles ?? 0.5;
   // Distance must always be within the search radius
   if ((comp.distanceMiles ?? 999) > radius) return false;
+
+  // Property type must match when both are known
+  if (deal.propertyType && comp.propertyType) {
+    if (deal.propertyType !== comp.propertyType) return false;
+  }
 
   // SqFt: within ±compSqftPct% of subject sqft
   if (deal.sqft && comp.sqft) {
@@ -90,6 +97,7 @@ router.post("/deals", async (req, res): Promise<void> => {
       notes: data.notes ?? null,
       status: data.status ?? "new",
       dataSource: provider.name === "RentCast" ? "rentcast" : "mock",
+      propertyType: data.propertyType ?? "SFR",
     })
     .returning();
 

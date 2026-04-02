@@ -18,6 +18,7 @@ export const dealsTable = pgTable("deals", {
   maxOffer: real("max_offer"),
   projectedReturn: real("projected_return"),
   dataSource: text("data_source").notNull().default("mock"),
+  propertyType: text("property_type").notNull().default("SFR"),
   // Comp search criteria
   compRadiusMiles: real("comp_radius_miles").default(0.5),
   compMonthsBack: integer("comp_months_back").default(6),

@@ -13,9 +13,12 @@ import { useCreateDeal } from "@workspace/api-client-react";
 import { ArrowLeft, Home, DollarSign, Ruler, Bed, Bath, Calendar, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+const PROPERTY_TYPES = ["SFR", "Condo", "Townhouse", "Multi-Family", "Land", "Other"] as const;
+
 const formSchema = z.object({
   address: z.string().min(5, "Address is required"),
   askingPrice: z.coerce.number().min(1, "Asking price is required"),
+  propertyType: z.string().default("SFR"),
   beds: z.coerce.number().optional().nullable(),
   baths: z.coerce.number().optional().nullable(),
   sqft: z.coerce.number().optional().nullable(),
@@ -38,6 +41,7 @@ export default function NewDeal() {
     defaultValues: {
       address: "",
       askingPrice: undefined,
+      propertyType: "SFR",
     }
   });
 
@@ -58,6 +62,10 @@ export default function NewDeal() {
       if (data.listPrice != null) {
         setValue("askingPrice", data.listPrice, { shouldValidate: true });
         setPricePrefilled(true);
+      }
+      // Auto-fill property type from RentCast
+      if (data.propertyType != null) {
+        setValue("propertyType", data.propertyType);
       }
       setAutoFilled(true);
     } catch {
@@ -127,16 +135,31 @@ export default function NewDeal() {
                   )}
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="askingPrice">Asking Price *</Label>
-                  <Input 
-                    id="askingPrice" 
-                    type="number" 
-                    icon={<DollarSign className="w-4 h-4" />}
-                    placeholder="450000" 
-                    {...register("askingPrice")} 
-                  />
-                  {errors.askingPrice && <p className="text-sm text-destructive">{errors.askingPrice.message}</p>}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="askingPrice">Asking Price *</Label>
+                    <Input 
+                      id="askingPrice" 
+                      type="number" 
+                      icon={<DollarSign className="w-4 h-4" />}
+                      placeholder="450000" 
+                      {...register("askingPrice")} 
+                    />
+                    {errors.askingPrice && <p className="text-sm text-destructive">{errors.askingPrice.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyType">Property Type</Label>
+                    <select
+                      id="propertyType"
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      value={watch("propertyType") || "SFR"}
+                      onChange={e => setValue("propertyType", e.target.value)}
+                    >
+                      {PROPERTY_TYPES.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 

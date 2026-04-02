@@ -64,6 +64,7 @@ export interface Deal {
   /** @nullable */
   projectedReturn: number | null;
   dataSource: DealDataSource;
+  propertyType: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +229,7 @@ export interface DealDetail {
   /** @nullable */
   projectedReturn: number | null;
   dataSource: DealDetailDataSource;
+  propertyType: string;
   createdAt: string;
   updatedAt: string;
   comps: DealComp[];
@@ -260,6 +262,8 @@ export interface CreateDealBody {
   yearBuilt?: number | null;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  propertyType?: string | null;
   status?: CreateDealBodyStatus;
 }
 
@@ -295,6 +299,8 @@ export interface UpdateDealBody {
   yearBuilt?: number | null;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  propertyType?: string | null;
   /** @nullable */
   status?: UpdateDealBodyStatus;
   /** @nullable */

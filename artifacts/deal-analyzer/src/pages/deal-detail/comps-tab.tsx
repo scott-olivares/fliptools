@@ -209,6 +209,7 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                 >
                   Address <SortIcon col="address" sortKey={sortKey} sortDir={sortDir} />
                 </th>
+                <th>Type</th>
                 <th className="text-right">Price</th>
                 <th
                   className="text-right cursor-pointer select-none hover:text-primary transition-colors"
@@ -247,6 +248,9 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                       <div className="font-semibold text-blue-900 truncate">{deal.address}</div>
                       <div className="text-xs text-blue-600 font-semibold uppercase tracking-wide mt-0.5">Subject Property</div>
                     </td>
+                    <td>
+                      <span className="text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded px-1.5 py-0.5">{deal.propertyType ?? "SFR"}</span>
+                    </td>
                     <td className="text-right font-mono font-semibold text-blue-900">
                       {formatCurrency(deal.askingPrice)}
                       <div className="text-xs text-blue-500 font-normal">asking</div>
@@ -275,6 +279,9 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
                         : <Circle className="w-5 h-5 text-slate-300 mx-auto" />}
                     </td>
                     <td className="font-medium max-w-[200px] truncate" title={c.address}>{c.address}</td>
+                    <td>
+                      <span className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 whitespace-nowrap">{c.propertyType ?? "—"}</span>
+                    </td>
                     <td className="text-right">
                       <span className="font-mono font-semibold">{formatCurrency(effectivePrice)}</span>
                       {isListPrice && (
