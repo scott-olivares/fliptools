@@ -31,6 +31,7 @@ export default function NewDeal() {
   const queryClient = useQueryClient();
   const [autoFilled, setAutoFilled] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [pricePrefilled, setPricePrefilled] = useState(false);
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -43,6 +44,7 @@ export default function NewDeal() {
   const handleAddressSelect = async (address: string) => {
     setAutoFilling(true);
     setAutoFilled(false);
+    setPricePrefilled(false);
     try {
       const res = await fetch(`/api/properties/lookup?address=${encodeURIComponent(address)}`);
       if (!res.ok) return;
@@ -52,6 +54,11 @@ export default function NewDeal() {
       if (data.sqft != null) setValue("sqft", data.sqft);
       if (data.yearBuilt != null) setValue("yearBuilt", data.yearBuilt);
       if (data.lotSize != null) setValue("lotSize", data.lotSize);
+      // Auto-fill asking price from active listing data when available
+      if (data.listPrice != null) {
+        setValue("askingPrice", data.listPrice, { shouldValidate: true });
+        setPricePrefilled(true);
+      }
       setAutoFilled(true);
     } catch {
       // silently fail — user can still fill manually
@@ -112,7 +119,10 @@ export default function NewDeal() {
                   )}
                   {autoFilled && !autoFilling && (
                     <p className="text-xs text-emerald-600 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Property details auto-filled from records
+                      <Sparkles className="w-3 h-3" />
+                      {pricePrefilled
+                        ? "Property details and listing price auto-filled from records"
+                        : "Property details auto-filled from records"}
                     </p>
                   )}
                 </div>

@@ -45,6 +45,10 @@ interface RentCastProperty {
   longitude?: number;
   lastSalePrice?: number;
   lastSaleDate?: string;
+  // Active listing fields (present when the property is currently listed)
+  listingStatus?: string;  // "Active" | "Pending" | "Inactive" etc.
+  listPrice?: number;
+  listedDate?: string;
 }
 
 interface RentCastComp {
@@ -86,6 +90,9 @@ export interface PropertyLookupResult {
   longitude: number | null;
   lastSalePrice: number | null;
   lastSaleDate: string | null;
+  // Populated when the property is currently listed on the MLS
+  listPrice: number | null;
+  listingStatus: string | null;
 }
 
 export function isRentCastConfigured(): boolean {
@@ -132,6 +139,8 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
     longitude: prop.longitude ?? null,
     lastSalePrice: prop.lastSalePrice ?? null,
     lastSaleDate: prop.lastSaleDate ?? null,
+    listPrice: prop.listPrice ?? null,
+    listingStatus: prop.listingStatus ?? null,
   };
 
   // ── Cost-protection: store in cache ──────────────────────────────────────
