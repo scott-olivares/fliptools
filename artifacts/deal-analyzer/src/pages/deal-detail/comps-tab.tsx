@@ -27,21 +27,51 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [maxDistance, setMaxDistance] = useState(0.5);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
-    queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/arv`] });
+  const compsQueryKey = [`/api/deals/${deal.id}/comps`];
+  const arvQueryKey = [`/api/deals/${deal.id}/arv`];
+
+  const optimisticUpdate = (compId: string, patch: Partial<DealComp & { comp: Partial<DealComp["comp"]> }>) => {
+    queryClient.setQueryData(compsQueryKey, (old: DealComp[] | undefined) => {
+      if (!old) return old;
+      return old.map((dc) =>
+        dc.compId === compId
+          ? { ...dc, ...patch, comp: { ...dc.comp, ...(patch.comp ?? {}) } }
+          : dc
+      );
+    });
+  };
+
+  const rollback = () => {
+    queryClient.invalidateQueries({ queryKey: compsQueryKey });
+  };
+
+  const invalidateArv = () => {
+    queryClient.invalidateQueries({ queryKey: arvQueryKey });
   };
 
   const toggleInclude = (comp: DealComp) => {
-    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { included: !comp.included } }, { onSuccess: invalidate });
+    const newIncluded = !comp.included;
+    optimisticUpdate(comp.compId, { included: newIncluded });
+    updateComp.mutate(
+      { id: deal.id, compId: comp.compId, data: { included: newIncluded } },
+      { onSuccess: invalidateArv, onError: rollback }
+    );
   };
 
   const changeRelevance = (comp: DealComp, val: "high" | "normal" | "low") => {
-    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { relevance: val } }, { onSuccess: invalidate });
+    optimisticUpdate(comp.compId, { relevance: val });
+    updateComp.mutate(
+      { id: deal.id, compId: comp.compId, data: { relevance: val } },
+      { onSuccess: invalidateArv, onError: rollback }
+    );
   };
 
   const changeCondition = (comp: DealComp, val: "remodeled" | "average" | "unknown") => {
-    updateComp.mutate({ id: deal.id, compId: comp.compId, data: { condition: val } }, { onSuccess: invalidate });
+    optimisticUpdate(comp.compId, { comp: { condition: val } });
+    updateComp.mutate(
+      { id: deal.id, compId: comp.compId, data: { condition: val } },
+      { onSuccess: invalidateArv, onError: rollback }
+    );
   };
 
   const toggleSort = (key: SortKey) => {
