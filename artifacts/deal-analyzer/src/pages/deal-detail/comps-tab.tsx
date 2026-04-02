@@ -60,27 +60,31 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
     return [...compsList]
       .filter((dc) => (dc.comp.distanceMiles ?? 0) <= maxDistance)
       .sort((a, b) => {
-      let av: number | string = 0;
-      let bv: number | string = 0;
-      if (sortKey === "address") {
-        av = a.comp.address ?? "";
-        bv = b.comp.address ?? "";
-        return sortDir === "asc" ? (av as string).localeCompare(bv as string) : (bv as string).localeCompare(av as string);
-      }
-      if (sortKey === "ppsqft") {
-        av = a.comp.salePrice && a.comp.sqft ? a.comp.salePrice / a.comp.sqft : 0;
-        bv = b.comp.salePrice && b.comp.sqft ? b.comp.salePrice / b.comp.sqft : 0;
-      }
-      if (sortKey === "beds") {
-        av = (a.comp.beds ?? 0) * 10 + (a.comp.baths ?? 0);
-        bv = (b.comp.beds ?? 0) * 10 + (b.comp.baths ?? 0);
-      }
-      if (sortKey === "distance") {
-        av = a.comp.distanceMiles ?? 999;
-        bv = b.comp.distanceMiles ?? 999;
-      }
-      return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
-    });
+        // Primary: selected comps always appear above unselected ones
+        if (a.included !== b.included) return a.included ? -1 : 1;
+
+        // Secondary: apply the active column sort within each group
+        let av: number | string = 0;
+        let bv: number | string = 0;
+        if (sortKey === "address") {
+          av = a.comp.address ?? "";
+          bv = b.comp.address ?? "";
+          return sortDir === "asc" ? (av as string).localeCompare(bv as string) : (bv as string).localeCompare(av as string);
+        }
+        if (sortKey === "ppsqft") {
+          av = a.comp.salePrice && a.comp.sqft ? a.comp.salePrice / a.comp.sqft : 0;
+          bv = b.comp.salePrice && b.comp.sqft ? b.comp.salePrice / b.comp.sqft : 0;
+        }
+        if (sortKey === "beds") {
+          av = (a.comp.beds ?? 0) * 10 + (a.comp.baths ?? 0);
+          bv = (b.comp.beds ?? 0) * 10 + (b.comp.baths ?? 0);
+        }
+        if (sortKey === "distance") {
+          av = a.comp.distanceMiles ?? 999;
+          bv = b.comp.distanceMiles ?? 999;
+        }
+        return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
+      });
   }, [compsList, sortKey, sortDir, maxDistance]);
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading comps...</div>;
