@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useCreateDeal } from "@workspace/api-client-react";
-import { ArrowLeft, Home, DollarSign, Ruler, Bed, Bath, Calendar, Sparkles } from "lucide-react";
+import { ArrowLeft, Home, Ruler, Bed, Bath, Calendar, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PROPERTY_TYPES = ["SFR", "Condo", "Townhouse", "Multi-Family", "Land", "Other"] as const;
@@ -138,12 +139,10 @@ export default function NewDeal() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="askingPrice">Asking Price *</Label>
-                    <Input 
-                      id="askingPrice" 
-                      type="number" 
-                      icon={<DollarSign className="w-4 h-4" />}
-                      placeholder="450000" 
-                      {...register("askingPrice")} 
+                    <CurrencyInput
+                      value={watch("askingPrice") || ""}
+                      onChange={(val) => setValue("askingPrice", val === "" ? 0 : val, { shouldValidate: true })}
+                      placeholder="$450,000"
                     />
                     {errors.askingPrice && <p className="text-sm text-destructive">{errors.askingPrice.message}</p>}
                   </div>

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignalBadge } from "@/components/status-badge";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useQueryClient } from "@tanstack/react-query";
 import { Calculator, Save, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -128,7 +129,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">After Repair Value</Label>
                 <FieldInfo tip="Estimated market value once fully renovated. Pulled from the ARV Engine — adjust there first, or type directly here." />
               </div>
-              <Input type="number" value={arv} onChange={e => setArv(parseField(e.target.value))} className="font-mono text-lg font-semibold border-primary/20 bg-primary/5" />
+              <CurrencyInput value={arv} onChange={setArv} className="text-lg font-semibold border-primary/20 bg-primary/5" />
             </div>
 
             <div className="space-y-1">
@@ -136,7 +137,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Rehab Budget</Label>
                 <FieldInfo tip="Total cost to renovate the property to sellable condition — materials, labor, permits, everything." />
               </div>
-              <Input type="number" value={rehab} onChange={e => setRehab(parseField(e.target.value))} className="font-mono" />
+              <CurrencyInput value={rehab} onChange={setRehab} />
             </div>
 
             <div className="space-y-1">
@@ -144,7 +145,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Closing Costs (Buy)</Label>
                 <FieldInfo tip="Costs at purchase close: title, escrow, lender fees, recording. Typically 1–3% of purchase price." />
               </div>
-              <Input type="number" value={closing} onChange={e => setClosing(parseField(e.target.value))} className="font-mono" />
+              <CurrencyInput value={closing} onChange={setClosing} />
             </div>
 
             <div className="space-y-1">
@@ -152,7 +153,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Holding Costs</Label>
                 <FieldInfo tip="Ongoing costs while you own it: loan interest, taxes, insurance, utilities. Multiply monthly cost by expected hold time." />
               </div>
-              <Input type="number" value={holding} onChange={e => setHolding(parseField(e.target.value))} className="font-mono" />
+              <CurrencyInput value={holding} onChange={setHolding} />
             </div>
 
             <div className="space-y-1">
@@ -160,7 +161,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Selling Costs</Label>
                 <FieldInfo tip="Costs to sell the finished property: agent commissions, seller-paid closing, staging. Typically 6–8% of ARV." />
               </div>
-              <Input type="number" value={selling} onChange={e => setSelling(parseField(e.target.value))} className="font-mono" />
+              <CurrencyInput value={selling} onChange={setSelling} />
             </div>
 
             <div className="space-y-1">
@@ -168,7 +169,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Other / Contingency</Label>
                 <FieldInfo tip="Buffer for surprises — permit overruns, hidden damage, scope creep. 5–10% of rehab budget is a common rule of thumb." />
               </div>
-              <Input type="number" value={other} onChange={e => setOther(parseField(e.target.value))} className="font-mono" />
+              <CurrencyInput value={other} onChange={setOther} />
             </div>
           </div>
 
@@ -180,7 +181,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                   <Label>Desired Profit ($)</Label>
                   <FieldInfo tip="Minimum dollar profit you need from this deal. Subtracted directly from ARV to set your max offer ceiling." />
                 </div>
-                <Input type="number" value={profit} onChange={e => setProfit(parseField(e.target.value))} className="font-mono" />
+                <CurrencyInput value={profit} onChange={setProfit} />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5">
@@ -198,12 +199,10 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                   <Label>Override Purchase Price</Label>
                   <FieldInfo tip="Test what your ROI looks like if you pay a different price — e.g. what if they counter at $350k? Leave blank to use Max Offer." />
                 </div>
-                <Input
-                  type="number"
+                <CurrencyInput
                   value={purchasePrice}
-                  placeholder={maxOffer.toFixed(0)}
-                  onChange={e => setPurchasePrice(parseField(e.target.value))}
-                  className="font-mono"
+                  placeholder={maxOffer > 0 ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(maxOffer) : "$0"}
+                  onChange={setPurchasePrice}
                 />
                 <p className="text-xs text-muted-foreground mt-1">Leave blank to use Max Offer.</p>
               </div>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useUpdateDeal } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DealDetail } from "@workspace/api-client-react";
@@ -116,7 +117,10 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
               </div>
               <div className="space-y-2">
                 <Label>Asking Price</Label>
-                <Input type="number" {...register("askingPrice")} />
+                <CurrencyInput
+                  value={watch("askingPrice") || ""}
+                  onChange={(val) => setValue("askingPrice", val === "" ? 0 : val, { shouldValidate: true })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Living SqFt</Label>
