@@ -4,9 +4,9 @@ import type { DealDetail, ARVResult } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useQueryClient } from "@tanstack/react-query";
 import { Calculator, AlertTriangle, ArrowRight, ShieldCheck, Info, Scale, Tag, Eye, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -16,10 +16,10 @@ export default function ArvTab({ deal, arv, onJumpToOffer }: { deal: DealDetail,
   const { toast } = useToast();
   const updateDeal = useUpdateDeal();
   
-  const [overrideValue, setOverrideValue] = useState(deal.arvOverride?.toString() || "");
+  const [overrideValue, setOverrideValue] = useState<number | "">(deal.arvOverride || "");
 
   const handleSaveOverride = () => {
-    const val = overrideValue ? parseFloat(overrideValue) : null;
+    const val = overrideValue !== "" ? overrideValue : null;
     updateDeal.mutate({
       id: deal.id,
       data: { arvOverride: val }
@@ -82,11 +82,10 @@ export default function ArvTab({ deal, arv, onJumpToOffer }: { deal: DealDetail,
             <div className="space-y-2">
               <Label>Override ARV Amount</Label>
               <div className="flex gap-2">
-                <Input 
-                  type="number" 
-                  value={overrideValue} 
-                  onChange={e => setOverrideValue(e.target.value)} 
-                  placeholder={arv.suggestedArv.toString()}
+                <CurrencyInput
+                  value={overrideValue}
+                  onChange={setOverrideValue}
+                  placeholder={formatCurrency(arv.suggestedArv)}
                 />
                 <Button variant="secondary" onClick={handleSaveOverride} isLoading={updateDeal.isPending}>
                   Apply

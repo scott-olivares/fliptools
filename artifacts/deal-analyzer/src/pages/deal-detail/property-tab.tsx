@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { useUpdateDeal } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DealDetail } from "@workspace/api-client-react";
@@ -124,7 +125,10 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
               </div>
               <div className="space-y-2">
                 <Label>Living SqFt</Label>
-                <Input type="number" {...register("sqft")} />
+                <NumberInput
+                  value={watch("sqft") ?? ""}
+                  onChange={(val) => setValue("sqft", val === "" ? null : (val as number), { shouldValidate: true })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Bedrooms</Label>
@@ -149,30 +153,22 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
                     {lotUnit === "acres" ? "show sqft" : "show acres"}
                   </button>
                 </div>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    step={lotUnit === "sqft" ? "1" : "0.001"}
-                    value={
-                      watch("lotSize") != null
-                        ? (lotUnit === "sqft"
-                            ? Math.round((watch("lotSize") as number) * 43560)
-                            : watch("lotSize") as number)
-                        : ""
-                    }
-                    onChange={(e) => {
-                      const raw = parseFloat(e.target.value);
-                      if (isNaN(raw)) { setValue("lotSize", null); return; }
-                      setValue("lotSize", lotUnit === "sqft"
-                        ? parseFloat((raw / 43560).toFixed(5))
-                        : raw);
-                    }}
-                    className="pr-14"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none select-none">
-                    {lotUnit}
-                  </span>
-                </div>
+                <NumberInput
+                  value={
+                    watch("lotSize") != null
+                      ? (lotUnit === "sqft"
+                          ? Math.round((watch("lotSize") as number) * 43560)
+                          : watch("lotSize") as number)
+                      : ""
+                  }
+                  onChange={(val) => {
+                    if (val === "") { setValue("lotSize", null); return; }
+                    setValue("lotSize", lotUnit === "sqft"
+                      ? parseFloat(((val as number) / 43560).toFixed(5))
+                      : (val as number));
+                  }}
+                  suffix={lotUnit}
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Property Notes & Context</Label>
