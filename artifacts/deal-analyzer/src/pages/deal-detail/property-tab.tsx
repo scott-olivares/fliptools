@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -54,7 +55,9 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormValues>({
+  const [lotUnit, setLotUnit] = useState<"acres" | "sqft">("acres");
+
+  const { register, handleSubmit, watch, setValue, formState: { isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       address: deal.address,
@@ -132,8 +135,40 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
                 <Input type="number" {...register("yearBuilt")} />
               </div>
               <div className="space-y-2">
-                <Label>Lot Size (acres)</Label>
-                <Input type="number" {...register("lotSize")} />
+                <div className="flex items-center justify-between">
+                  <Label>Lot Size</Label>
+                  <button
+                    type="button"
+                    onClick={() => setLotUnit((u) => u === "acres" ? "sqft" : "acres")}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    {lotUnit === "acres" ? "show sqft" : "show acres"}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step={lotUnit === "sqft" ? "1" : "0.001"}
+                    value={
+                      watch("lotSize") != null
+                        ? (lotUnit === "sqft"
+                            ? Math.round((watch("lotSize") as number) * 43560)
+                            : watch("lotSize") as number)
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const raw = parseFloat(e.target.value);
+                      if (isNaN(raw)) { setValue("lotSize", null); return; }
+                      setValue("lotSize", lotUnit === "sqft"
+                        ? parseFloat((raw / 43560).toFixed(5))
+                        : raw);
+                    }}
+                    className="pr-14"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none select-none">
+                    {lotUnit}
+                  </span>
+                </div>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Property Notes & Context</Label>
