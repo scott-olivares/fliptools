@@ -45,13 +45,6 @@ artifacts/mockup-sandbox/ UI prototype (ignore)
 
 **No watch mode:** API server has no hot reload — kill/rebuild/restart to see changes
 
-**Railway deployment:** 
-- Root Directory: `.` (workspace root, NOT `artifacts/api-server`)
-- Builder: Nixpacks
-- Custom commands: Leave EMPTY (nixpacks.toml controls everything)
-- `nixpacks.toml` must use `pnpm install --no-frozen-lockfile` (NOT `pnpm install`)
-- After any package.json/pnpm-workspace.yaml changes: regenerate lockfile with `rm -rf node_modules pnpm-lock.yaml && pnpm install`
-
 ---
 
 ## Quick dev commands
@@ -84,6 +77,7 @@ app.use((_req, res) => {
 
 ## Important files
 
+- **DEPLOYMENT.md** — Railway deployment guide, Express 5 routing rules, troubleshooting (read when deploying)
 - **CONTEXT.md** — Detailed setup, deployment status, session notes, full command reference
 - **docs/PRD_v1.1a.md** — v1.1a requirements (complete)
 - **docs/PRD_v1.2.md** — v1.2 requirements (batch screener)
