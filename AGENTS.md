@@ -194,31 +194,50 @@ All 7 critical fixes from `docs/PRD_v1.1a.md` are complete and committed to `mai
 
 Also fixed during review: pre-existing type errors across comps-tab, property-tab, geocode, button.tsx, openapi spec gaps, api-zod duplicate exports.
 
-### What was NOT done yet (blocked on GitHub push)
+### GitHub push status
 
-- **`git push` to GitHub is pending** — the commit exists locally on `main` but was never pushed
-- Authentication failed with HTTPS. Homebrew was installed to get `gh` CLI
-- Homebrew installed successfully. PATH was configured with the three `echo`/`eval` commands
-- **Next step: open a new terminal and run `brew install gh && gh auth login`, then `git push`**
+✅ **COMPLETE** - All v1.1a commits pushed to GitHub
+- Used `gh auth login` with personal access token to authenticate
+- Successfully pushed commits including Railway configuration
 
-### Railway deployment — ready to configure
+### Railway deployment — IN PROGRESS
 
-The app is wired for single-service Railway deployment:
+**Current status:**
+- Railway project created: `accurate-abundance`
+- GitHub repo connected: `scott-olivares/fliptools`
+- Service: `@workspace/api-server` (keep ONLY this service, delete all others Railway auto-created)
+- Environment variables configured:
+  - ✅ NODE_ENV = production
+  - ✅ PORT = 3000
+  - ✅ DATABASE_URL = (Neon connection string set)
+  - ✅ RENTCAST_API_KEY = (set)
 
-- `artifacts/api-server/package.json` `build` script builds the frontend then the server
-- `artifacts/api-server/src/app.ts` serves `deal-analyzer/dist/public` as static files in production
-- `vite.config.ts` PORT/BASE_PATH are no longer required during build (only dev/preview)
+**Configuration files created:**
+- `nixpacks.toml` at workspace root (latest commit: a94967d)
+- Configured to run from workspace root to access pnpm catalog
 
-**Railway settings (one service):**
-| Setting | Value |
-|---|---|
-| Root directory | `artifacts/api-server` |
-| Build command | `pnpm install && pnpm build` |
-| Start command | `pnpm start` |
-| NODE_ENV | `production` |
-| PORT | `3000` |
-| DATABASE_URL | _(Neon connection string)_ |
-| RENTCAST_API_KEY | _(optional — omit for mock data)_ |
+**NEXT STEPS (immediate):**
+
+1. **In Railway Settings → Build section:**
+   - Set Builder to: **Nixpacks** (ignore "deprecated" warning - it works better for pnpm monorepos)
+   - **Remove the "Root Directory" setting** - leave it empty or set to `.`
+     - This is CRITICAL - Railway needs to build from workspace root where `pnpm-workspace.yaml` and catalog are located
+   - Custom Build Command should remain: `pnpm install && pnpm build`
+   - Custom Start Command should remain: `pnpm start`
+
+2. **After removing Root Directory:**
+   - Railway will auto-deploy
+   - The `nixpacks.toml` at workspace root will handle the build:
+     - Runs `pnpm install --frozen-lockfile` from workspace root (has access to catalog)
+     - Runs `cd artifacts/api-server && pnpm build` (builds frontend + server)
+     - Runs `cd artifacts/api-server && pnpm start` (serves both)
+
+3. **Check build logs** - should succeed this time since pnpm catalog will be accessible
+
+**Previous deployment issues encountered:**
+- Railpack tried to use `npm install` instead of `pnpm` - failed on workspace:* protocol
+- First nixpacks.toml was in `artifacts/api-server/` but Root Directory prevented access to workspace catalog
+- Solution: moved nixpacks.toml to workspace root + must remove Root Directory setting
 
 ### What's next after Railway is live
 
