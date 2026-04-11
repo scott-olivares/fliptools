@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout";
-import { useGetDeal, useCalculateArv, getCalculateArvQueryKey } from "@workspace/api-client-react";
-import { DealStatusBadge } from "@/components/status-badge";
+import {
+  useGetDeal,
+  useCalculateArv,
+  useUpdateDeal,
+} from "@workspace/api-client-react";
+
 import { formatCurrency } from "@/lib/utils";
 import { ArrowLeft, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Import tabs
 import PropertyTab from "./property-tab";
@@ -20,15 +25,39 @@ const TABS = [
   { id: "offer", label: "Offer Calculator" },
 ];
 
+const STATUS_OPTIONS = [
+  { value: "new", label: "New" },
+  { value: "reviewing", label: "Reviewing" },
+  { value: "offer_submitted", label: "Offer Submitted" },
+  { value: "passed", label: "Passed" },
+  { value: "closed", label: "Closed" },
+];
+
 export default function DealDetail() {
   const [, params] = useRoute("/deals/:id");
   const dealId = parseInt(params?.id || "0", 10);
   const [activeTab, setActiveTab] = useState("property");
-  
+  const queryClient = useQueryClient();
+  const updateDeal = useUpdateDeal();
+
   const { data: deal, isLoading, error } = useGetDeal(dealId);
   // Always keep the ARV query mounted so it refetches in the background
   // whenever comps are changed (comps tab invalidates this query key)
-  const { data: arv } = useCalculateArv(dealId, { query: { enabled: !!dealId } });
+  const { data: arv } = useCalculateArv(dealId, {
+    query: { enabled: !!dealId } as any,
+  });
+
+  function handleStatusChange(newStatus: string) {
+    updateDeal.mutate(
+      { id: dealId, data: { status: newStatus as any } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
+          queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+        },
+      },
+    );
+  }
 
   if (isLoading) {
     return (
@@ -45,8 +74,15 @@ export default function DealDetail() {
       <Layout>
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold text-slate-800">Deal not found</h2>
-          <p className="mt-2 text-slate-600">The deal you are looking for does not exist.</p>
-          <Link href="/" className="text-primary hover:underline mt-4 inline-block">Return to dashboard</Link>
+          <p className="mt-2 text-slate-600">
+            The deal you are looking for does not exist.
+          </p>
+          <Link
+            href="/"
+            className="text-primary hover:underline mt-4 inline-block"
+          >
+            Return to dashboard
+          </Link>
         </div>
       </Layout>
     );
@@ -55,15 +91,30 @@ export default function DealDetail() {
   return (
     <Layout>
       <div className="mb-6">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors">
+        <Link
+          href="/"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Pipeline
         </Link>
-        
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <DealStatusBadge status={deal.status} />
-              {deal.dataSource === 'mock' && (
+              <select
+                value={deal.status}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                disabled={updateDeal.isPending}
+                className="text-xs font-semibold border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700 cursor-pointer hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                aria-label="Deal status"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {deal.dataSource === "mock" && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-sm bg-blue-100 text-blue-700 uppercase tracking-wider">
                   Sample Data
                 </span>
@@ -74,17 +125,25 @@ export default function DealDetail() {
               {deal.address}
             </h1>
           </div>
-          
+
           <div className="flex gap-8 bg-white p-4 rounded-xl border shadow-sm">
             <div>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Asking Price</p>
-              <p className="text-xl font-mono font-bold text-slate-900">{formatCurrency(deal.askingPrice)}</p>
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                Asking Price
+              </p>
+              <p className="text-xl font-mono font-bold text-slate-900">
+                {formatCurrency(deal.askingPrice)}
+              </p>
             </div>
             <div className="w-px bg-slate-200"></div>
             <div>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Current ARV Est.</p>
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                Current ARV Est.
+              </p>
               <p className="text-xl font-mono font-bold text-primary">
-                {formatCurrency(deal.arvOverride || arv?.suggestedArv || deal.arvEstimate)}
+                {formatCurrency(
+                  deal.arvOverride || arv?.suggestedArv || deal.arvEstimate,
+                )}
               </p>
             </div>
           </div>
@@ -102,7 +161,7 @@ export default function DealDetail() {
                 "py-2.5 px-3 text-sm font-medium rounded-lg transition-all text-center",
                 activeTab === tab.id
                   ? "bg-white text-primary shadow-sm"
-                  : "text-muted-foreground hover:text-slate-900"
+                  : "text-muted-foreground hover:text-slate-900",
               )}
             >
               {tab.label}
@@ -118,7 +177,7 @@ export default function DealDetail() {
                 "px-5 py-3 text-sm font-medium transition-all relative whitespace-nowrap",
                 activeTab === tab.id
                   ? "text-primary"
-                  : "text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                  : "text-muted-foreground hover:text-slate-900 hover:bg-slate-50",
               )}
             >
               {tab.label}
@@ -132,9 +191,20 @@ export default function DealDetail() {
 
       {/* Tab Content */}
       <div className="pb-24">
-        {activeTab === "property" && <PropertyTab deal={deal} onCompsRefreshed={() => setActiveTab("comps")} />}
+        {activeTab === "property" && (
+          <PropertyTab
+            deal={deal}
+            onCompsRefreshed={() => setActiveTab("comps")}
+          />
+        )}
         {activeTab === "comps" && <CompsTab deal={deal} />}
-        {activeTab === "arv" && <ArvTab deal={deal} arv={arv} onJumpToOffer={() => setActiveTab("offer")} />}
+        {activeTab === "arv" && (
+          <ArvTab
+            deal={deal}
+            arv={arv}
+            onJumpToOffer={() => setActiveTab("offer")}
+          />
+        )}
         {activeTab === "offer" && <OfferTab deal={deal} />}
       </div>
     </Layout>

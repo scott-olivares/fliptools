@@ -33,8 +33,18 @@ export const ListDealsResponseItem = zod.object({
   arvOverride: zod.number().nullable(),
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
-  dataSource: zod.enum(["mock", "manual", "rentcast"]),
-  propertyType: zod.string(),
+  offerSignal: zod
+    .union([
+      zod.literal("strong_candidate"),
+      zod.literal("close_review_manually"),
+      zod.literal("likely_pass"),
+      zod.literal(null),
+    ])
+    .nullable()
+    .describe(
+      "Signal from the saved offer analysis, null if no offer has been saved yet",
+    ),
+  dataSource: zod.enum(["mock", "manual"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -52,10 +62,10 @@ export const CreateDealBody = zod.object({
   lotSize: zod.number().nullish(),
   yearBuilt: zod.number().nullish(),
   notes: zod.string().nullish(),
-  propertyType: zod.string().nullish(),
   status: zod
     .enum(["new", "reviewing", "offer_submitted", "passed", "closed"])
     .optional(),
+  propertyType: zod.string().nullish(),
 });
 
 /**
@@ -80,14 +90,14 @@ export const GetDealResponse = zod.object({
   arvOverride: zod.number().nullable(),
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
-  dataSource: zod.enum(["mock", "manual", "rentcast"]),
   propertyType: zod.string(),
-  compRadiusMiles: zod.number().nullable(),
-  compMonthsBack: zod.number().nullable(),
-  compSqftPct: zod.number().nullable(),
-  compBedsRange: zod.number().nullable(),
-  compBathsRange: zod.number().nullable(),
-  compYearBuiltRange: zod.number().nullable(),
+  compRadiusMiles: zod.number().nullish(),
+  compMonthsBack: zod.number().nullish(),
+  compSqftPct: zod.number().nullish(),
+  compBedsRange: zod.number().nullish(),
+  compBathsRange: zod.number().nullish(),
+  compYearBuiltRange: zod.number().nullish(),
+  dataSource: zod.enum(["mock", "manual"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
   comps: zod.array(
@@ -108,6 +118,7 @@ export const GetDealResponse = zod.object({
         beds: zod.number().nullable(),
         baths: zod.number().nullable(),
         distanceMiles: zod.number().nullable(),
+        yearBuilt: zod.number().nullish(),
         soldDate: zod.string().nullable(),
         listingStatus: zod.enum(["sold", "pending", "active"]),
         propertyType: zod.string(),
@@ -115,7 +126,7 @@ export const GetDealResponse = zod.object({
         source: zod.string(),
         latitude: zod.number().nullable(),
         longitude: zod.number().nullable(),
-        dataSource: zod.enum(["mock", "manual", "rentcast"]),
+        dataSource: zod.enum(["mock", "manual"]),
         createdAt: zod.date(),
       }),
     }),
@@ -167,7 +178,6 @@ export const UpdateDealBody = zod.object({
   lotSize: zod.number().nullish(),
   yearBuilt: zod.number().nullish(),
   notes: zod.string().nullish(),
-  propertyType: zod.string().nullish(),
   status: zod
     .union([
       zod.literal("new"),
@@ -182,12 +192,6 @@ export const UpdateDealBody = zod.object({
   maxOffer: zod.number().nullish(),
   arvEstimate: zod.number().nullish(),
   projectedReturn: zod.number().nullish(),
-  compRadiusMiles: zod.number().nullish(),
-  compMonthsBack: zod.number().nullish(),
-  compSqftPct: zod.number().nullish(),
-  compBedsRange: zod.number().nullish(),
-  compBathsRange: zod.number().nullish(),
-  compYearBuiltRange: zod.number().nullish(),
 });
 
 export const UpdateDealResponse = zod.object({
@@ -205,14 +209,18 @@ export const UpdateDealResponse = zod.object({
   arvOverride: zod.number().nullable(),
   maxOffer: zod.number().nullable(),
   projectedReturn: zod.number().nullable(),
-  dataSource: zod.enum(["mock", "manual", "rentcast"]),
-  propertyType: zod.string(),
-  compRadiusMiles: zod.number().nullable(),
-  compMonthsBack: zod.number().nullable(),
-  compSqftPct: zod.number().nullable(),
-  compBedsRange: zod.number().nullable(),
-  compBathsRange: zod.number().nullable(),
-  compYearBuiltRange: zod.number().nullable(),
+  offerSignal: zod
+    .union([
+      zod.literal("strong_candidate"),
+      zod.literal("close_review_manually"),
+      zod.literal("likely_pass"),
+      zod.literal(null),
+    ])
+    .nullable()
+    .describe(
+      "Signal from the saved offer analysis, null if no offer has been saved yet",
+    ),
+  dataSource: zod.enum(["mock", "manual"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -248,6 +256,7 @@ export const GetDealCompsResponseItem = zod.object({
     beds: zod.number().nullable(),
     baths: zod.number().nullable(),
     distanceMiles: zod.number().nullable(),
+    yearBuilt: zod.number().nullish(),
     soldDate: zod.string().nullable(),
     listingStatus: zod.enum(["sold", "pending", "active"]),
     propertyType: zod.string(),
@@ -255,7 +264,7 @@ export const GetDealCompsResponseItem = zod.object({
     source: zod.string(),
     latitude: zod.number().nullable(),
     longitude: zod.number().nullable(),
-    dataSource: zod.enum(["mock", "manual", "rentcast"]),
+    dataSource: zod.enum(["mock", "manual"]),
     createdAt: zod.date(),
   }),
 });
@@ -340,6 +349,7 @@ export const UpdateDealCompResponse = zod.object({
     beds: zod.number().nullable(),
     baths: zod.number().nullable(),
     distanceMiles: zod.number().nullable(),
+    yearBuilt: zod.number().nullish(),
     soldDate: zod.string().nullable(),
     listingStatus: zod.enum(["sold", "pending", "active"]),
     propertyType: zod.string(),
@@ -347,7 +357,7 @@ export const UpdateDealCompResponse = zod.object({
     source: zod.string(),
     latitude: zod.number().nullable(),
     longitude: zod.number().nullable(),
-    dataSource: zod.enum(["mock", "manual", "rentcast"]),
+    dataSource: zod.enum(["mock", "manual"]),
     createdAt: zod.date(),
   }),
 });

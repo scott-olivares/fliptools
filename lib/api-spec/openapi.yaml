@@ -436,6 +436,10 @@ components:
           type: ["number", "null"]
         projectedReturn:
           type: ["number", "null"]
+        offerSignal:
+          type: ["string", "null"]
+          enum: [strong_candidate, close_review_manually, likely_pass, null]
+          description: Signal from the saved offer analysis, null if no offer has been saved yet
         dataSource:
           type: string
           enum: [mock, manual]
@@ -460,6 +464,7 @@ components:
         - arvOverride
         - maxOffer
         - projectedReturn
+        - offerSignal
         - dataSource
         - createdAt
         - updatedAt
@@ -496,6 +501,20 @@ components:
           type: ["number", "null"]
         projectedReturn:
           type: ["number", "null"]
+        propertyType:
+          type: string
+        compRadiusMiles:
+          type: ["number", "null"]
+        compMonthsBack:
+          type: ["integer", "null"]
+        compSqftPct:
+          type: ["integer", "null"]
+        compBedsRange:
+          type: ["number", "null"]
+        compBathsRange:
+          type: ["number", "null"]
+        compYearBuiltRange:
+          type: ["integer", "null"]
         dataSource:
           type: string
           enum: [mock, manual]
@@ -527,6 +546,7 @@ components:
         - arvOverride
         - maxOffer
         - projectedReturn
+        - propertyType
         - dataSource
         - createdAt
         - updatedAt
@@ -554,6 +574,8 @@ components:
         status:
           type: string
           enum: [new, reviewing, offer_submitted, passed, closed]
+        propertyType:
+          type: ["string", "null"]
       required:
         - address
         - askingPrice
@@ -610,6 +632,8 @@ components:
           type: ["number", "null"]
         distanceMiles:
           type: ["number", "null"]
+        yearBuilt:
+          type: ["integer", "null"]
         soldDate:
           type: ["string", "null"]
         listingStatus:
@@ -705,6 +729,9 @@ components:
           enum: [high, normal, low, null]
         notes:
           type: ["string", "null"]
+        condition:
+          type: ["string", "null"]
+          enum: [remodeled, average, unknown, null]
 
     CreateCompBody:
       type: object

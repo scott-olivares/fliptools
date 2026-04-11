@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray } from "drizzle-orm";
-import { db, dealsTable, compsTable, dealCompsTable, offerAnalysesTable } from "@workspace/db";
+import {
+  db,
+  dealsTable,
+  compsTable,
+  dealCompsTable,
+  offerAnalysesTable,
+} from "@workspace/db";
 import {
   ListDealsResponse,
   CreateDealBody,
@@ -16,7 +22,10 @@ import {
 } from "@workspace/api-zod";
 import { calculateARV, calculateOffer } from "../lib/arvEngine.js";
 import { mockCompProvider } from "../lib/mockCompProvider.js";
-import { rentcastCompProvider, isRentCastConfigured } from "../lib/rentcastProvider.js";
+import {
+  rentcastCompProvider,
+  isRentCastConfigured,
+} from "../lib/rentcastProvider.js";
 
 function activeCompProvider() {
   return isRentCastConfigured() ? rentcastCompProvider : mockCompProvider;
@@ -28,17 +37,28 @@ function activeCompProvider() {
  * A comp is included only if it passes EVERY criterion for which both the
  * subject and the comp have a value. If either side is null we give the
  * comp the benefit of the doubt and don't filter on that criterion.
- * Note: year_built is not stored on comps, so that filter is skipped here
- * (it is still shown as a UI hint for the user to manually evaluate).
  */
 function shouldIncludeComp(
-  deal: { sqft?: number | null; beds?: number | null; baths?: number | null;
-          compRadiusMiles?: number | null; compSqftPct?: number | null;
-          compBedsRange?: number | null; compBathsRange?: number | null;
-          propertyType?: string | null },
-  comp: { distanceMiles?: number | null; sqft?: number | null;
-          beds?: number | null; baths?: number | null;
-          propertyType?: string | null }
+  deal: {
+    sqft?: number | null;
+    beds?: number | null;
+    baths?: number | null;
+    yearBuilt?: number | null;
+    compRadiusMiles?: number | null;
+    compSqftPct?: number | null;
+    compBedsRange?: number | null;
+    compBathsRange?: number | null;
+    compYearBuiltRange?: number | null;
+    propertyType?: string | null;
+  },
+  comp: {
+    distanceMiles?: number | null;
+    sqft?: number | null;
+    beds?: number | null;
+    baths?: number | null;
+    yearBuilt?: number | null;
+    propertyType?: string | null;
+  },
 ): boolean {
   const radius = deal.compRadiusMiles ?? 0.5;
   // Distance must always be within the search radius
@@ -57,12 +77,24 @@ function shouldIncludeComp(
 
   // Beds: within ±compBedsRange of subject beds
   if (deal.beds != null && comp.beds != null) {
-    if (Math.abs(comp.beds - deal.beds) > (deal.compBedsRange ?? 1)) return false;
+    if (Math.abs(comp.beds - deal.beds) > (deal.compBedsRange ?? 1))
+      return false;
   }
 
   // Baths: within ±compBathsRange of subject baths
   if (deal.baths != null && comp.baths != null) {
-    if (Math.abs(comp.baths - deal.baths) > (deal.compBathsRange ?? 1)) return false;
+    if (Math.abs(comp.baths - deal.baths) > (deal.compBathsRange ?? 1))
+      return false;
+  }
+
+  // Year Built: within ±compYearBuiltRange of subject year built.
+  // If either side is null, skip this filter — do not exclude comps with missing year data.
+  if (deal.yearBuilt != null && comp.yearBuilt != null) {
+    if (
+      Math.abs(comp.yearBuilt - deal.yearBuilt) >
+      (deal.compYearBuiltRange ?? 10)
+    )
+      return false;
   }
 
   return true;
@@ -71,8 +103,31 @@ function shouldIncludeComp(
 const router: IRouter = Router();
 
 router.get("/deals", async (_req, res): Promise<void> => {
-  const deals = await db.select().from(dealsTable).orderBy(dealsTable.updatedAt);
-  res.json(ListDealsResponse.parse(deals.reverse()));
+  const deals = await db
+    .select()
+    .from(dealsTable)
+    .orderBy(dealsTable.updatedAt);
+  const dealIds = deals.map((d) => d.id);
+
+  // Fetch saved offer signals for all deals in one query
+  const signals =
+    dealIds.length > 0
+      ? await db
+          .select({
+            dealId: offerAnalysesTable.dealId,
+            signal: offerAnalysesTable.signal,
+          })
+          .from(offerAnalysesTable)
+          .where(inArray(offerAnalysesTable.dealId, dealIds))
+      : [];
+  const signalMap = new Map(signals.map((s) => [s.dealId, s.signal]));
+
+  const dealsWithSignal = deals.map((d) => ({
+    ...d,
+    offerSignal: signalMap.get(d.id) ?? null,
+  }));
+
+  res.json(ListDealsResponse.parse(dealsWithSignal.reverse()));
 });
 
 router.post("/deals", async (req, res): Promise<void> => {
@@ -108,15 +163,25 @@ router.post("/deals", async (req, res): Promise<void> => {
       subjectBeds: deal.beds ?? undefined,
       subjectBaths: deal.baths ?? undefined,
     };
-    let comps = await provider.getCompsForProperty(deal.address, filters).catch(async (err: any) => {
-      if (provider.name === "RentCast") {
-        console.warn(`[deals] Initial comp fetch failed, retrying wider: ${err?.message}`);
-        return provider.getCompsForProperty(deal.address, { ...filters, radiusMiles: 2.0 });
-      }
-      throw err;
-    });
+    let comps = await provider
+      .getCompsForProperty(deal.address, filters)
+      .catch(async (err: any) => {
+        if (provider.name === "RentCast") {
+          console.warn(
+            `[deals] Initial comp fetch failed, retrying wider: ${err?.message}`,
+          );
+          return provider.getCompsForProperty(deal.address, {
+            ...filters,
+            radiusMiles: 2.0,
+          });
+        }
+        throw err;
+      });
     if (comps.length > 0) {
-      const insertedComps = await db.insert(compsTable).values(comps).returning();
+      const insertedComps = await db
+        .insert(compsTable)
+        .values(comps)
+        .returning();
       for (const comp of insertedComps) {
         await db.insert(dealCompsTable).values({
           dealId: deal.id,
@@ -127,12 +192,15 @@ router.post("/deals", async (req, res): Promise<void> => {
         });
       }
       // Cost-protection: stamp fetch time so the refresh endpoint can enforce TTL
-      await db.update(dealsTable)
+      await db
+        .update(dealsTable)
         .set({ compsLastFetchedAt: new Date() })
         .where(eq(dealsTable.id, deal.id));
     }
   } catch (err: any) {
-    console.warn(`[deals] comp fetch failed (${provider.name}): ${err?.message}`);
+    console.warn(
+      `[deals] comp fetch failed (${provider.name}): ${err?.message}`,
+    );
   }
 
   res.status(201).json(deal);
@@ -145,7 +213,10 @@ router.get("/deals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+  const [deal] = await db
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, params.data.id));
   if (!deal) {
     res.status(404).json({ error: "Deal not found" });
     return;
@@ -159,14 +230,19 @@ router.get("/deals/:id", async (req, res): Promise<void> => {
   const compIds = dealComps.map((dc) => dc.compId);
   const compsData =
     compIds.length > 0
-      ? await db.select().from(compsTable).where(inArray(compsTable.id, compIds))
+      ? await db
+          .select()
+          .from(compsTable)
+          .where(inArray(compsTable.id, compIds))
       : [];
 
   const compMap = new Map(compsData.map((c) => [c.id, c]));
-  const comps = dealComps.map((dc) => ({
-    ...dc,
-    comp: compMap.get(dc.compId)!,
-  })).filter((dc) => dc.comp);
+  const comps = dealComps
+    .map((dc) => ({
+      ...dc,
+      comp: compMap.get(dc.compId)!,
+    }))
+    .filter((dc) => dc.comp);
 
   const [offerAnalysis] = await db
     .select()
@@ -203,7 +279,10 @@ router.patch("/deals/:id", async (req, res): Promise<void> => {
   }
 
   if (Object.keys(updateData).length === 0) {
-    const [existing] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+    const [existing] = await db
+      .select()
+      .from(dealsTable)
+      .where(eq(dealsTable.id, params.data.id));
     if (!existing) {
       res.status(404).json({ error: "Deal not found" });
       return;
@@ -233,15 +312,51 @@ router.delete("/deals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deal] = await db
-    .delete(dealsTable)
-    .where(eq(dealsTable.id, params.data.id))
-    .returning();
+  const dealId = params.data.id;
 
-  if (!deal) {
+  // Verify the deal exists before attempting deletion
+  const [existing] = await db
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, dealId));
+  if (!existing) {
     res.status(404).json({ error: "Deal not found" });
     return;
   }
+
+  // Delete everything in a transaction: offer analysis → deal_comps → orphaned comps → deal
+  await db.transaction(async (tx) => {
+    // 1. Delete saved offer analysis
+    await tx
+      .delete(offerAnalysesTable)
+      .where(eq(offerAnalysesTable.dealId, dealId));
+
+    // 2. Collect comp IDs before removing the join records
+    const dealComps = await tx
+      .select({ compId: dealCompsTable.compId })
+      .from(dealCompsTable)
+      .where(eq(dealCompsTable.dealId, dealId));
+    const compIds = dealComps.map((dc) => dc.compId);
+
+    // 3. Remove join records
+    await tx.delete(dealCompsTable).where(eq(dealCompsTable.dealId, dealId));
+
+    // 4. Delete comps that are no longer referenced by any deal
+    if (compIds.length > 0) {
+      const stillReferenced = await tx
+        .select({ compId: dealCompsTable.compId })
+        .from(dealCompsTable)
+        .where(inArray(dealCompsTable.compId, compIds));
+      const referencedIds = new Set(stillReferenced.map((r) => r.compId));
+      const orphanIds = compIds.filter((id) => !referencedIds.has(id));
+      if (orphanIds.length > 0) {
+        await tx.delete(compsTable).where(inArray(compsTable.id, orphanIds));
+      }
+    }
+
+    // 5. Delete the deal itself
+    await tx.delete(dealsTable).where(eq(dealsTable.id, dealId));
+  });
 
   res.sendStatus(204);
 });
@@ -259,7 +374,10 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+  const [deal] = await db
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, params.data.id));
   if (!deal) {
     res.status(404).json({ error: "Deal not found" });
     return;
@@ -270,8 +388,12 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
   if (!force && deal.compsLastFetchedAt) {
     const ageMs = Date.now() - new Date(deal.compsLastFetchedAt).getTime();
     if (ageMs < COMP_REFRESH_TTL_MS) {
-      const nextRefreshAt = new Date(new Date(deal.compsLastFetchedAt).getTime() + COMP_REFRESH_TTL_MS);
-      console.info(`[deals] comp refresh skipped for deal ${deal.id} — last fetched ${Math.round(ageMs / 60000)}m ago (TTL: 60m). Use ?force=true to override.`);
+      const nextRefreshAt = new Date(
+        new Date(deal.compsLastFetchedAt).getTime() + COMP_REFRESH_TTL_MS,
+      );
+      console.info(
+        `[deals] comp refresh skipped for deal ${deal.id} — last fetched ${Math.round(ageMs / 60000)}m ago (TTL: 60m). Use ?force=true to override.`,
+      );
       res.json({ refreshed: 0, cached: true, nextRefreshAt });
       return;
     }
@@ -288,6 +410,42 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     subjectBaths: deal.baths ?? undefined,
   };
 
+  // Fetch new comps FIRST — only delete existing ones if we get results back.
+  // This prevents the deal from ending up with zero comps if the API fails.
+  const provider = activeCompProvider();
+  let freshComps: Awaited<ReturnType<typeof provider.getCompsForProperty>> = [];
+  try {
+    freshComps = await provider.getCompsForProperty(deal.address, filters);
+  } catch (err: any) {
+    // If RentCast fails (e.g. insufficient comps), retry with a wider radius
+    if (provider.name === "RentCast" && baseRadius < 5) {
+      try {
+        console.warn(
+          `[deals] Retrying comp fetch with wider radius (${baseRadius * 2}mi)`,
+        );
+        freshComps = await provider.getCompsForProperty(deal.address, {
+          ...filters,
+          radiusMiles: Math.min(baseRadius * 2, 5),
+        });
+      } catch (retryErr: any) {
+        console.warn(`[deals] Retry also failed: ${retryErr?.message}`);
+      }
+    } else {
+      console.warn(
+        `[deals] Comp provider error (${provider.name}): ${err?.message}`,
+      );
+    }
+  }
+
+  if (freshComps.length === 0) {
+    // Do NOT delete existing comps — keep them and tell the client nothing changed
+    res
+      .status(422)
+      .json({ error: "No comps found — your existing comps have been kept." });
+    return;
+  }
+
+  // We have fresh results — now safe to delete-and-replace existing comps
   const existingDealComps = await db
     .select()
     .from(dealCompsTable)
@@ -299,35 +457,10 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     await db.delete(compsTable).where(inArray(compsTable.id, compIds));
   }
 
-  const provider = activeCompProvider();
-  let freshComps;
-  try {
-    freshComps = await provider.getCompsForProperty(deal.address, filters);
-  } catch (err: any) {
-    // If RentCast fails (e.g. insufficient comps), retry with a wider radius
-    if (provider.name === "RentCast" && baseRadius < 5) {
-      try {
-        console.warn(`[deals] Retrying comp fetch with wider radius (${baseRadius * 2}mi)`);
-        freshComps = await provider.getCompsForProperty(deal.address, {
-          ...filters,
-          radiusMiles: Math.min(baseRadius * 2, 5),
-        });
-      } catch (retryErr: any) {
-        console.warn(`[deals] Retry also failed: ${retryErr?.message}`);
-        freshComps = [];
-      }
-    } else {
-      console.warn(`[deals] Comp provider error (${provider.name}): ${err?.message}`);
-      freshComps = [];
-    }
-  }
-
-  if (freshComps.length === 0) {
-    res.json({ refreshed: 0 });
-    return;
-  }
-
-  const insertedComps = await db.insert(compsTable).values(freshComps).returning();
+  const insertedComps = await db
+    .insert(compsTable)
+    .values(freshComps)
+    .returning();
   for (const comp of insertedComps) {
     await db.insert(dealCompsTable).values({
       dealId: deal.id,
@@ -339,7 +472,8 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
   }
 
   // Cost-protection: stamp fetch time to enable TTL on future refreshes
-  await db.update(dealsTable)
+  await db
+    .update(dealsTable)
     .set({
       dataSource: provider.name === "RentCast" ? "rentcast" : "mock",
       compsLastFetchedAt: new Date(),
@@ -356,7 +490,10 @@ router.get("/deals/:id/arv", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+  const [deal] = await db
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, params.data.id));
   if (!deal) {
     res.status(404).json({ error: "Deal not found" });
     return;
@@ -371,7 +508,10 @@ router.get("/deals/:id/arv", async (req, res): Promise<void> => {
 
   const compsData =
     compIds.length > 0
-      ? await db.select().from(compsTable).where(inArray(compsTable.id, compIds))
+      ? await db
+          .select()
+          .from(compsTable)
+          .where(inArray(compsTable.id, compIds))
       : [];
 
   const compMap = new Map(compsData.map((c) => [c.id, c]));
@@ -429,13 +569,26 @@ router.put("/deals/:id/offer", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, params.data.id));
+  const [deal] = await db
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, params.data.id));
   if (!deal) {
     res.status(404).json({ error: "Deal not found" });
     return;
   }
 
-  const { arv, rehabCost, closingCosts, holdingCosts, sellingCosts, otherCosts, desiredProfitAmount, targetReturnPct, purchasePrice } = parsed.data;
+  const {
+    arv,
+    rehabCost,
+    closingCosts,
+    holdingCosts,
+    sellingCosts,
+    otherCosts,
+    desiredProfitAmount,
+    targetReturnPct,
+    purchasePrice,
+  } = parsed.data;
 
   const calcResult = calculateOffer({
     arv,

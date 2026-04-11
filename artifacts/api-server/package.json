@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "build": "node ./build.mjs",
+    "build": "pnpm run build:frontend && node ./build.mjs",
+    "build:frontend": "cd ../deal-analyzer && BASE_PATH=/ PORT=5173 pnpm build",
+    "build:server": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

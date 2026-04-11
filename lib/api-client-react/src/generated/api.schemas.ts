@@ -29,13 +29,26 @@ export const DealStatus = {
   closed: "closed",
 } as const;
 
+/**
+ * Signal from the saved offer analysis, null if no offer has been saved yet
+ * @nullable
+ */
+export type DealOfferSignal =
+  | (typeof DealOfferSignal)[keyof typeof DealOfferSignal]
+  | null;
+
+export const DealOfferSignal = {
+  strong_candidate: "strong_candidate",
+  close_review_manually: "close_review_manually",
+  likely_pass: "likely_pass",
+} as const;
+
 export type DealDataSource =
   (typeof DealDataSource)[keyof typeof DealDataSource];
 
 export const DealDataSource = {
   mock: "mock",
   manual: "manual",
-  rentcast: "rentcast",
 } as const;
 
 export interface Deal {
@@ -63,8 +76,12 @@ export interface Deal {
   maxOffer: number | null;
   /** @nullable */
   projectedReturn: number | null;
+  /**
+   * Signal from the saved offer analysis, null if no offer has been saved yet
+   * @nullable
+   */
+  offerSignal: DealOfferSignal;
   dataSource: DealDataSource;
-  propertyType: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,7 +103,6 @@ export type DealDetailDataSource =
 export const DealDetailDataSource = {
   mock: "mock",
   manual: "manual",
-  rentcast: "rentcast",
 } as const;
 
 export type DealCompRelevance =
@@ -121,7 +137,6 @@ export type CompDataSource =
 export const CompDataSource = {
   mock: "mock",
   manual: "manual",
-  rentcast: "rentcast",
 } as const;
 
 export interface Comp {
@@ -141,6 +156,8 @@ export interface Comp {
   baths: number | null;
   /** @nullable */
   distanceMiles: number | null;
+  /** @nullable */
+  yearBuilt?: number | null;
   /** @nullable */
   soldDate: string | null;
   listingStatus: CompListingStatus;
@@ -228,8 +245,20 @@ export interface DealDetail {
   maxOffer: number | null;
   /** @nullable */
   projectedReturn: number | null;
-  dataSource: DealDetailDataSource;
   propertyType: string;
+  /** @nullable */
+  compRadiusMiles?: number | null;
+  /** @nullable */
+  compMonthsBack?: number | null;
+  /** @nullable */
+  compSqftPct?: number | null;
+  /** @nullable */
+  compBedsRange?: number | null;
+  /** @nullable */
+  compBathsRange?: number | null;
+  /** @nullable */
+  compYearBuiltRange?: number | null;
+  dataSource: DealDetailDataSource;
   createdAt: string;
   updatedAt: string;
   comps: DealComp[];
@@ -262,9 +291,9 @@ export interface CreateDealBody {
   yearBuilt?: number | null;
   /** @nullable */
   notes?: string | null;
+  status?: CreateDealBodyStatus;
   /** @nullable */
   propertyType?: string | null;
-  status?: CreateDealBodyStatus;
 }
 
 /**
@@ -299,8 +328,6 @@ export interface UpdateDealBody {
   yearBuilt?: number | null;
   /** @nullable */
   notes?: string | null;
-  /** @nullable */
-  propertyType?: string | null;
   /** @nullable */
   status?: UpdateDealBodyStatus;
   /** @nullable */

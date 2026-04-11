@@ -7,7 +7,10 @@ const RENTCAST_BASE = "https://api.rentcast.io/v1";
 // Caches /v1/properties results by normalized address for 24 hours so that
 // re-selecting the same address on the New Deal form never double-bills.
 const PROPERTY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const propertyCache = new Map<string, { data: PropertyLookupResult; expiresAt: number }>();
+const propertyCache = new Map<
+  string,
+  { data: PropertyLookupResult; expiresAt: number }
+>();
 
 function cacheKey(address: string): string {
   return address.trim().toLowerCase();
@@ -46,7 +49,7 @@ interface RentCastProperty {
   lastSalePrice?: number;
   lastSaleDate?: string;
   // Active listing fields (present when the property is currently listed)
-  listingStatus?: string;  // "Active" | "Pending" | "Inactive" etc.
+  listingStatus?: string; // "Active" | "Pending" | "Inactive" etc.
   listPrice?: number;
   listedDate?: string;
 }
@@ -62,10 +65,10 @@ interface RentCastComp {
   yearBuilt?: number;
   propertyType?: string;
   price?: number;
-  status?: string;       // "Active" | "Inactive" | "Pending"
+  status?: string; // "Active" | "Inactive" | "Pending"
   listingType?: string;
   listedDate?: string;
-  removedDate?: string;  // date listing was removed (proxy for sale date)
+  removedDate?: string; // date listing was removed (proxy for sale date)
   lastSeenDate?: string;
   distance?: number;
   daysOld?: number;
@@ -99,7 +102,9 @@ export function isRentCastConfigured(): boolean {
   return !!getApiKey();
 }
 
-export async function lookupProperty(address: string): Promise<PropertyLookupResult | null> {
+export async function lookupProperty(
+  address: string,
+): Promise<PropertyLookupResult | null> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("RENTCAST_API_KEY is not configured");
 
@@ -124,7 +129,7 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
     throw new Error(`RentCast API error ${response.status}`);
   }
 
-  const data: RentCastProperty[] = await response.json();
+  const data = (await response.json()) as RentCastProperty[];
   if (!data || data.length === 0) return null;
 
   const prop = data[0];
@@ -144,7 +149,10 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
   };
 
   // ── Cost-protection: store in cache ──────────────────────────────────────
-  propertyCache.set(key, { data: result, expiresAt: Date.now() + PROPERTY_CACHE_TTL_MS });
+  propertyCache.set(key, {
+    data: result,
+    expiresAt: Date.now() + PROPERTY_CACHE_TTL_MS,
+  });
   // ─────────────────────────────────────────────────────────────────────────
 
   return result;
@@ -153,7 +161,10 @@ export async function lookupProperty(address: string): Promise<PropertyLookupRes
 export const rentcastCompProvider: CompProvider = {
   name: "RentCast",
 
-  async getCompsForProperty(subjectAddress: string, filters?: CompFilters): Promise<InsertComp[]> {
+  async getCompsForProperty(
+    subjectAddress: string,
+    filters?: CompFilters,
+  ): Promise<InsertComp[]> {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("RENTCAST_API_KEY is not configured");
 
@@ -171,7 +182,9 @@ export const rentcastCompProvider: CompProvider = {
     });
 
     // ── Cost-protection: log every outbound AVM call ───────────────────────
-    console.info(`[RentCast] → GET /v1/avm/value  address="${subjectAddress}"  radius=${radius}mi  daysOld=${daysOld}`);
+    console.info(
+      `[RentCast] → GET /v1/avm/value  address="${subjectAddress}"  radius=${radius}mi  daysOld=${daysOld}`,
+    );
     // ─────────────────────────────────────────────────────────────────────────
 
     const url = `${RENTCAST_BASE}/avm/value?${params}`;
@@ -184,24 +197,30 @@ export const rentcastCompProvider: CompProvider = {
       if (response.status === 404) return []; // no AVM data for this address
       if (response.status === 400) {
         const body = await response.text().catch(() => "");
-        throw new Error(`RentCast comp lookup failed: ${body || response.status}`);
+        throw new Error(
+          `RentCast comp lookup failed: ${body || response.status}`,
+        );
       }
       throw new Error(`RentCast API error ${response.status}`);
     }
 
-    const data: RentCastAvmResponse = await response.json();
+    const data = (await response.json()) as RentCastAvmResponse;
     if (!data.comparables || data.comparables.length === 0) return [];
 
     // Guard: strip out the subject property if RentCast ever returns it as its own comp
     const normalizedSubject = subjectAddress.trim().toLowerCase();
     const comparables = data.comparables.filter(
-      (c) => c.formattedAddress.trim().toLowerCase() !== normalizedSubject
+      (c) => c.formattedAddress.trim().toLowerCase() !== normalizedSubject,
     );
     if (comparables.length < data.comparables.length) {
-      console.warn(`[RentCast] filtered out subject property from its own comparables: "${subjectAddress}"`);
+      console.warn(
+        `[RentCast] filtered out subject property from its own comparables: "${subjectAddress}"`,
+      );
     }
 
-    console.info(`[RentCast] ← received ${comparables.length} comparables for "${subjectAddress}"`);
+    console.info(
+      `[RentCast] ← received ${comparables.length} comparables for "${subjectAddress}"`,
+    );
 
     return comparables.map((c): InsertComp => {
       // "Inactive" = listing removed (sold/off market). "Active"/"Pending" = still listed.
@@ -209,7 +228,9 @@ export const rentcastCompProvider: CompProvider = {
       const isSold = statusLower === "inactive" || statusLower === "sold";
       const isPending = statusLower === "pending";
       const listingStatus = isSold ? "sold" : isPending ? "pending" : "active";
-      const soldDate = isSold ? (c.removedDate ?? c.lastSeenDate ?? null) : null;
+      const soldDate = isSold
+        ? (c.removedDate ?? c.lastSeenDate ?? null)
+        : null;
 
       return {
         address: c.formattedAddress,
@@ -219,6 +240,7 @@ export const rentcastCompProvider: CompProvider = {
         lotSize: lotSqftToAcres(c.lotSize),
         beds: c.bedrooms ?? null,
         baths: c.bathrooms ?? null,
+        yearBuilt: c.yearBuilt ?? null,
         distanceMiles: c.distance ?? null,
         soldDate,
         listingStatus,

@@ -76,24 +76,21 @@ router.get("/geocode/autocomplete", async (req, res) => {
       bbox: "-124.78,24.74,-66.95,49.34",
     });
 
-    const response = await fetch(
-      `https://photon.komoot.io/api/?${params}`,
-      {
-        headers: {
-          "User-Agent": "DealAnalyzerApp/1.0 (realestate@example.com)",
-        },
-      }
-    );
+    const response = await fetch(`https://photon.komoot.io/api/?${params}`, {
+      headers: {
+        "User-Agent": "DealAnalyzerApp/1.0 (realestate@example.com)",
+      },
+    });
 
     if (!response.ok) {
       res.status(502).json({ error: "Geocoding service unavailable" });
       return;
     }
 
-    const data: PhotonResponse = await response.json();
+    const data = (await response.json()) as PhotonResponse;
     const suggestions: AddressSuggestion[] = data.features
-      .filter(f => f.properties.countrycode?.toLowerCase() === "us")
-      .filter(f => f.properties.street || f.properties.housenumber)
+      .filter((f) => f.properties.countrycode?.toLowerCase() === "us")
+      .filter((f) => f.properties.street || f.properties.housenumber)
       .map(toSuggestion)
       .slice(0, 5);
 

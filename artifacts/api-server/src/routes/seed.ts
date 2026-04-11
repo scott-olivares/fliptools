@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, dealsTable, compsTable, dealCompsTable, offerAnalysesTable } from "@workspace/db";
+import {
+  db,
+  dealsTable,
+  compsTable,
+  dealCompsTable,
+  offerAnalysesTable,
+} from "@workspace/db";
 import { calculateARV, calculateOffer } from "../lib/arvEngine.js";
 import { MOCK_COMPS } from "../lib/mockCompProvider.js";
 
@@ -15,7 +21,8 @@ const SAMPLE_DEALS = [
     sqft: 1800,
     lotSize: 0.18,
     yearBuilt: 1978,
-    notes: "Dated kitchen and baths, good bones. Roof is 5 years old. Needs full interior rehab.",
+    notes:
+      "Dated kitchen and baths, good bones. Roof is 5 years old. Needs full interior rehab.",
     status: "reviewing" as const,
   },
   {
@@ -26,7 +33,8 @@ const SAMPLE_DEALS = [
     sqft: 2050,
     lotSize: 0.22,
     yearBuilt: 1985,
-    notes: "Seller motivated. Foundation crack at NW corner, inspector recommends repair. Interior is cosmetic only after that.",
+    notes:
+      "Seller motivated. Foundation crack at NW corner, inspector recommends repair. Interior is cosmetic only after that.",
     status: "offer_submitted" as const,
   },
   {
@@ -37,7 +45,8 @@ const SAMPLE_DEALS = [
     sqft: 1540,
     lotSize: 0.14,
     yearBuilt: 1962,
-    notes: "Smaller lot. Good neighborhood trajectory. Full gut rehab likely needed.",
+    notes:
+      "Smaller lot. Good neighborhood trajectory. Full gut rehab likely needed.",
     status: "new" as const,
   },
   {
@@ -48,7 +57,8 @@ const SAMPLE_DEALS = [
     sqft: 2100,
     lotSize: 0.26,
     yearBuilt: 1991,
-    notes: "Larger floorplan, good layout. Cosmetic rehab + master bath expansion potential.",
+    notes:
+      "Larger floorplan, good layout. Cosmetic rehab + master bath expansion potential.",
     status: "passed" as const,
   },
   {
@@ -59,18 +69,28 @@ const SAMPLE_DEALS = [
     sqft: 1720,
     lotSize: 0.17,
     yearBuilt: 1975,
-    notes: "Pending estate sale. Some deferred maintenance. HVAC replaced 2022.",
+    notes:
+      "Pending estate sale. Some deferred maintenance. HVAC replaced 2022.",
     status: "closed" as const,
   },
 ];
 
 router.post("/seed", async (_req, res): Promise<void> => {
+  // Block this endpoint in production — it wipes the entire database
+  if (process.env.NODE_ENV === "production") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
   await db.delete(offerAnalysesTable);
   await db.delete(dealCompsTable);
   await db.delete(dealsTable);
   await db.delete(compsTable);
 
-  const insertedComps = await db.insert(compsTable).values(MOCK_COMPS).returning();
+  const insertedComps = await db
+    .insert(compsTable)
+    .values(MOCK_COMPS)
+    .returning();
   let dealsCreated = 0;
 
   for (const dealData of SAMPLE_DEALS) {
@@ -150,7 +170,8 @@ router.post("/seed", async (_req, res): Promise<void> => {
   }
 
   res.json({
-    message: "Sample data loaded successfully. All fields are labeled SAMPLE DATA.",
+    message:
+      "Sample data loaded successfully. All fields are labeled SAMPLE DATA.",
     dealsCreated,
     compsCreated: insertedComps.length,
   });
