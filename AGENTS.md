@@ -45,6 +45,13 @@ artifacts/mockup-sandbox/ UI prototype (ignore)
 
 **No watch mode:** API server has no hot reload — kill/rebuild/restart to see changes
 
+**Railway deployment:** 
+- Root Directory: `.` (workspace root, NOT `artifacts/api-server`)
+- Builder: Nixpacks
+- Custom commands: Leave EMPTY (nixpacks.toml controls everything)
+- `nixpacks.toml` must use `pnpm install --no-frozen-lockfile` (NOT `pnpm install`)
+- After any package.json/pnpm-workspace.yaml changes: regenerate lockfile with `rm -rf node_modules pnpm-lock.yaml && pnpm install`
+
 ---
 
 ## Quick dev commands
@@ -53,6 +60,25 @@ artifacts/mockup-sandbox/ UI prototype (ignore)
 **Start frontend (port 5173):** `cd artifacts/deal-analyzer && source .env && pnpm dev`  
 **Typecheck all:** `pnpm typecheck` (from workspace root)  
 **Build for production:** `cd artifacts/api-server && pnpm build && pnpm start` (builds frontend + server)
+
+---
+
+## Express 5 catch-all route pattern (CRITICAL)
+
+⚠️ **Never use `app.get()` or `app.route()` with catch-all patterns** — Express 5 + path-to-regexp v8 doesn't support `/:path*` or `/:path(.*)` syntax.
+
+✅ **Correct pattern for client-side routing:**
+```typescript
+app.use(express.static(staticDir));
+app.use((_req, res) => {
+  res.sendFile(path.join(staticDir, "index.html"));
+});
+```
+
+❌ **WRONG:**
+- `app.get("*", handler)` — Invalid syntax
+- `app.get("/:path*", handler)` — Crashes with PathError
+- `app.get("/:path(.*)", handler)` — Regex not supported
 
 ---
 
