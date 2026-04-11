@@ -237,11 +237,96 @@ Also fixed during review: pre-existing type errors across comps-tab, property-ta
 - First nixpacks.toml was in `artifacts/api-server/` but Root Directory prevented access to workspace catalog
 - Solution: moved nixpacks.toml to workspace root + must remove Root Directory setting
 
-### What's next after Railway is live
+---
 
-1. Give friend the new Railway URL, retire `https://fliprate.replit.app/`
-2. Begin v1.2 — see `docs/PRD_v1.2.md` for full scope
-3. Start v1.2 with `/grill-me` on the batch screener architecture before building
+## v1.2 Task Brief — Batch Screener (Apr 11, 2026)
+
+### What we're building
+A batch address screening system that processes 20-100 property addresses asynchronously, displays ranked results in a triage dashboard, and accepts addresses via paste/CSV upload or email forwarding.
+
+### Why
+The primary user receives 20-50 deal leads per week but only has time to manually analyze 5-10. The rest are skipped. This feature enables screening the full list automatically, surfacing the strong candidates and filtering out obvious passes so no good deals are missed.
+
+### Scope (in)
+**Part A — Carried over from v1.1a:**
+- Manual comp entry UI
+- Print/PDF export via `window.print()`
+- 7 code quality fixes from v1.1a review
+
+**Part B — Batch screener core:**
+- Batch intake: textarea (paste addresses) + CSV upload
+- Email forwarding: dedicated Gmail + IMAP poller checking every 15 min
+- Triage dashboard: ranked deal list sorted by signal strength
+- Quick-pass auto-filter: deals >$100k off asking auto-flagged as "Likely Pass"
+- Daily digest: re-process new unanalyzed deals overnight, show banner on login
+- Usage tracking: hard-coded 100 properties/month limit with counter in UI
+
+### Scope (out / later)
+- Payment integration (deferred until 2-3 paying users)
+- Gmail/Outlook OAuth (using IMAP poller instead)
+- Automatic inbox scanning (manual forwarding only)
+- Photo analysis for comp condition detection (v2.0)
+- Multi-user auth (v1.3)
+
+### Key decisions made
+
+**1. Pricing/Monetization:**
+- Free tier: 10 properties/month, no batch upload
+- Pro tier: 100 properties/month, $29-49/mo (not built yet, just track usage)
+- v1.2 ships with hard-coded 100/mo limit for primary user
+- Usage tracked in `usage_logs` table
+- Return 429 error when exceeded
+
+**2. Job infrastructure:**
+- Database-backed queue (`batch_jobs` table)
+- Worker process runs in same Railway container as API (separate npm script)
+- Worker polls DB every 10 seconds for pending jobs
+- Serial processing: one property at a time, 2-3 sec delay between each
+- Jobs survive server restarts (persisted in DB)
+- No Redis/BullMQ (keeps it simple and free)
+
+**3. Email infrastructure:**
+- Dedicated Gmail account (e.g., `fliptools.intake@gmail.com`)
+- IMAP poller checks inbox every 15 minutes
+- Parse email body with regex for addresses
+- Create batch jobs same as manual upload
+- Mark emails as read after processing
+- Upgrade to paid service (SendGrid/Postmark) only when needed
+
+**4. Batch processing UX:**
+- Show partial results immediately as they complete (don't wait for full batch)
+- Live progress: "23 of 50 complete" with updating list
+- User can click into completed deals while others process
+- Processing continues if user closes browser
+- Show banner when they return: "Your batch of 50 properties finished"
+- Failed addresses: flag with clear reason ("Address not found → Check for typos"), no auto-retry
+
+**5. Daily digest:**
+- Only process NEW deals that haven't been analyzed yet
+- Don't re-fetch comps for existing deals (too expensive)
+- Run nightly at 2 AM
+- In-app banner only (no email/push in v1.2)
+
+### Risks / watch-outs
+- **API costs:** Serial processing with delays keeps this manageable, but monitor RentCast usage ($0.15-0.40/property)
+- **Email parsing accuracy:** Regex-based parsing may miss addresses in weird formats—flag for manual review instead of silently dropping
+- **Gmail rate limits:** IMAP polling every 15 min is well under limits for single user, but track if issues arise
+- **Worker process reliability:** If worker crashes, jobs stay in DB as "pending" but won't auto-restart—add health check or manual restart command
+
+### Suggested starting point
+1. **Part A first** (lower risk, builds confidence):
+   - A1: Manual comp entry (1-2 hours)
+   - A2: Print CSS (1 hour)
+   - A3: Code quality fixes (3-4 hours)
+2. **Then Part B:**
+   - Create `batch_jobs` and `usage_logs` tables
+   - Build batch intake UI (paste/CSV)
+   - Implement worker process
+   - Build triage dashboard (run `/ux` first on layout)
+   - Add email IMAP poller
+   - Add daily digest job
+
+---
 
 ### Key product docs
 
