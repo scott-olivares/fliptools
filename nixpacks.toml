@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm-9_x", "openssl"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = ["cd artifacts/api-server && pnpm build"]
+
+[start]
+cmd = "cd artifacts/api-server && pnpm start"
