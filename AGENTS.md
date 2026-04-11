@@ -47,6 +47,14 @@ artifacts/mockup-sandbox/ UI prototype (ignore)
 
 ---
 
+## Deployment
+
+**Production URL:** https://fliptools.up.railway.app/  
+**Railway Project:** believable-renewal (production environment)  
+**Status:** ✅ v1.1a deployed and live
+
+---
+
 ## Quick dev commands
 
 **Start API (port 3000):** `cd artifacts/api-server && source .env && pnpm dev`  
