@@ -20,7 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import type { TriageDeal } from "@workspace/api-client-react";
 
-const INTAKE_EMAIL = "screen@fliptools.app";
+const INTAKE_EMAIL = "fliptools.intake@gmail.com";
 
 // ─── Gap badge ────────────────────────────────────────────────────────────────
 // gap = askingPrice - maxOffer
