@@ -4,7 +4,8 @@
 
 ## Stack & Structure
 
-- **Stack:** Node 24, pnpm, Express 5, React 19, Vite 7, Drizzle ORM, PostgreSQL (Neon)
+- **Stack:** Node 22 (Railway), pnpm, Express 5, React 19, Vite 7, Drizzle ORM, PostgreSQL (Neon)
+- **Node version note:** Dev uses Node 24 locally but Railway's nixpkgs snapshot only has `nodejs_22`. Use `nodejs_22` in `nixpacks.toml` — do NOT change to 24.
 - **Monorepo:** `lib/db/` (schema), `lib/api-spec/` (OpenAPI), `artifacts/api-server/` (backend), `artifacts/deal-analyzer/` (frontend)
 
 ## Rules
