@@ -26,6 +26,12 @@ import {
   rentcastCompProvider,
   isRentCastConfigured,
 } from "../lib/rentcastProvider.js";
+import {
+  isOverCap,
+  recordUsage,
+  getUsageThisMonth,
+  MONTHLY_CAP,
+} from "../lib/usageCap.js";
 
 function activeCompProvider() {
   return isRentCastConfigured() ? rentcastCompProvider : mockCompProvider;
@@ -137,6 +143,20 @@ router.post("/deals", async (req, res): Promise<void> => {
     return;
   }
 
+  // Usage cap: reject if the user has hit their monthly limit.
+  // TODO: v1.3 — replace "default" with req.user.id from auth middleware.
+  const userId = "default";
+  if (await isOverCap(userId)) {
+    const used = await getUsageThisMonth(userId);
+    res.status(429).json({
+      error: "Monthly analysis limit reached.",
+      used,
+      cap: MONTHLY_CAP,
+      message: `You have used ${used} of ${MONTHLY_CAP} analyses this month. Limit resets on the 1st.`,
+    });
+    return;
+  }
+
   const data = parsed.data;
   const provider = activeCompProvider();
   const [deal] = await db
@@ -168,7 +188,17 @@ router.post("/deals", async (req, res): Promise<void> => {
       .catch(async (err: any) => {
         if (provider.name === "RentCast") {
           console.warn(
-            `[deals] Initial comp fetch failed, retrying wider: ${err?.message}`,
+            JSON.stringify({
+              level: "warn",
+              message: "Initial comp fetch failed, retrying with wider radius",
+              dealId: deal.id,
+              address: deal.address,
+              provider: provider.name,
+              originalRadius: filters.radiusMiles,
+              retryRadius: 2.0,
+              error: err?.message || String(err),
+              timestamp: new Date().toISOString(),
+            }),
           );
           return provider.getCompsForProperty(deal.address, {
             ...filters,
@@ -198,10 +228,23 @@ router.post("/deals", async (req, res): Promise<void> => {
         .where(eq(dealsTable.id, deal.id));
     }
   } catch (err: any) {
-    console.warn(
-      `[deals] comp fetch failed (${provider.name}): ${err?.message}`,
+    // Structured error logging for comp fetch failures
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Comp fetch failed during deal creation",
+        dealId: deal.id,
+        address: deal.address,
+        provider: provider.name,
+        error: err?.message || String(err),
+        stack: process.env.NODE_ENV === "production" ? undefined : err?.stack,
+        timestamp: new Date().toISOString(),
+      }),
     );
   }
+
+  // Record usage now that a deal has been successfully created.
+  await recordUsage(deal.id, "manual", userId);
 
   res.status(201).json(deal);
 });
@@ -314,18 +357,9 @@ router.delete("/deals/:id", async (req, res): Promise<void> => {
 
   const dealId = params.data.id;
 
-  // Verify the deal exists before attempting deletion
-  const [existing] = await db
-    .select()
-    .from(dealsTable)
-    .where(eq(dealsTable.id, dealId));
-  if (!existing) {
-    res.status(404).json({ error: "Deal not found" });
-    return;
-  }
-
   // Delete everything in a transaction: offer analysis → deal_comps → orphaned comps → deal
-  await db.transaction(async (tx) => {
+  // The deal existence check is performed atomically inside the transaction
+  const deletedDeal = await db.transaction(async (tx) => {
     // 1. Delete saved offer analysis
     await tx
       .delete(offerAnalysesTable)
@@ -354,9 +388,20 @@ router.delete("/deals/:id", async (req, res): Promise<void> => {
       }
     }
 
-    // 5. Delete the deal itself
-    await tx.delete(dealsTable).where(eq(dealsTable.id, dealId));
+    // 5. Delete the deal itself using RETURNING to detect non-existence atomically
+    const [deleted] = await tx
+      .delete(dealsTable)
+      .where(eq(dealsTable.id, dealId))
+      .returning({ id: dealsTable.id });
+
+    return deleted;
   });
+
+  // If no deal was deleted, it didn't exist
+  if (!deletedDeal) {
+    res.status(404).json({ error: "Deal not found" });
+    return;
+  }
 
   res.sendStatus(204);
 });
@@ -420,19 +465,54 @@ router.post("/deals/:id/comps/refresh", async (req, res): Promise<void> => {
     // If RentCast fails (e.g. insufficient comps), retry with a wider radius
     if (provider.name === "RentCast" && baseRadius < 5) {
       try {
+        const retryRadius = Math.min(baseRadius * 2, 5);
         console.warn(
-          `[deals] Retrying comp fetch with wider radius (${baseRadius * 2}mi)`,
+          JSON.stringify({
+            level: "warn",
+            message: "Comp refresh failed, retrying with wider radius",
+            dealId: deal.id,
+            address: deal.address,
+            provider: provider.name,
+            originalRadius: baseRadius,
+            retryRadius,
+            error: err?.message || String(err),
+            timestamp: new Date().toISOString(),
+          }),
         );
         freshComps = await provider.getCompsForProperty(deal.address, {
           ...filters,
-          radiusMiles: Math.min(baseRadius * 2, 5),
+          radiusMiles: retryRadius,
         });
       } catch (retryErr: any) {
-        console.warn(`[deals] Retry also failed: ${retryErr?.message}`);
+        console.error(
+          JSON.stringify({
+            level: "error",
+            message: "Comp refresh retry also failed",
+            dealId: deal.id,
+            address: deal.address,
+            provider: provider.name,
+            retryRadius: Math.min(baseRadius * 2, 5),
+            error: retryErr?.message || String(retryErr),
+            stack:
+              process.env.NODE_ENV === "production"
+                ? undefined
+                : retryErr?.stack,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
     } else {
-      console.warn(
-        `[deals] Comp provider error (${provider.name}): ${err?.message}`,
+      console.error(
+        JSON.stringify({
+          level: "error",
+          message: "Comp refresh failed",
+          dealId: deal.id,
+          address: deal.address,
+          provider: provider.name,
+          error: err?.message || String(err),
+          stack: process.env.NODE_ENV === "production" ? undefined : err?.stack,
+          timestamp: new Date().toISOString(),
+        }),
       );
     }
   }

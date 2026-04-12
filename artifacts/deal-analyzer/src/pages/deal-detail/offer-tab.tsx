@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useGetOfferAnalysis,
   useSaveOfferAnalysis,
@@ -80,6 +80,10 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
   // Current deal ARV — always use this, never the stale saved value
   const currentArv = deal.arvOverride || deal.arvEstimate || 0;
 
+  // Track whether we've initialized to prevent re-running effect on every render
+  const hasInitialized = useRef(false);
+  const lastServerAnalysisId = useRef<number | null>(null);
+
   const [arv, setArv] = useState<NumField>(currentArv);
   const [rehab, setRehab] = useState<NumField>(0);
   const [closing, setClosing] = useState<NumField>(0);
@@ -93,34 +97,51 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
   const [showStaleArvWarning, setShowStaleArvWarning] = useState(false);
 
   useEffect(() => {
-    // Always initialize ARV from the current deal — never from the saved analysis
-    setArv(currentArv);
+    // Only run initialization once when serverAnalysis first loads or changes ID
+    const analysisChanged = serverAnalysis?.id !== lastServerAnalysisId.current;
+    if (!hasInitialized.current || analysisChanged) {
+      // Always initialize ARV from the current deal — never from the saved analysis
+      setArv(currentArv);
 
-    if (serverAnalysis) {
-      // Restore cost inputs from saved analysis
-      setRehab(serverAnalysis.rehabCost);
-      setClosing(serverAnalysis.closingCosts);
-      setHolding(serverAnalysis.holdingCosts);
-      setSelling(serverAnalysis.sellingCosts);
-      setOther(serverAnalysis.otherCosts);
-      setProfit(serverAnalysis.desiredProfitAmount);
-      setTargetReturn(serverAnalysis.targetReturnPct);
-      setPurchasePrice(serverAnalysis.purchasePrice ?? "");
-      setLastSavedAt(serverAnalysis.updatedAt);
+      if (serverAnalysis) {
+        // Restore cost inputs from saved analysis
+        setRehab(serverAnalysis.rehabCost);
+        setClosing(serverAnalysis.closingCosts);
+        setHolding(serverAnalysis.holdingCosts);
+        setSelling(serverAnalysis.sellingCosts);
+        setOther(serverAnalysis.otherCosts);
+        setProfit(serverAnalysis.desiredProfitAmount);
+        setTargetReturn(serverAnalysis.targetReturnPct);
+        setPurchasePrice(serverAnalysis.purchasePrice ?? "");
+        setLastSavedAt(serverAnalysis.updatedAt);
+        lastServerAnalysisId.current = serverAnalysis.id;
 
-      // Warn if the ARV has changed significantly since last save
-      const savedArv = serverAnalysis.arv;
-      const diff = Math.abs(currentArv - savedArv);
-      setShowStaleArvWarning(diff > 1000);
-    } else {
-      // No saved analysis — pre-fill sensible defaults from current ARV
-      const baseArv = currentArv;
-      setClosing(Math.round(baseArv * 0.02));
-      setSelling(Math.round(baseArv * 0.06));
-      setProfit(Math.round(baseArv * 0.09));
-      setShowStaleArvWarning(false);
+        // Warn if the ARV has changed significantly since last save
+        const savedArv = serverAnalysis.arv;
+        const diff = Math.abs(currentArv - savedArv);
+        setShowStaleArvWarning(diff > 1000);
+      } else if (!hasInitialized.current) {
+        // No saved analysis — pre-fill sensible defaults from current ARV (only on first load)
+        const baseArv = currentArv;
+        setClosing(Math.round(baseArv * 0.02));
+        setSelling(Math.round(baseArv * 0.06));
+        setProfit(Math.round(baseArv * 0.09));
+        setShowStaleArvWarning(false);
+      }
+
+      hasInitialized.current = true;
     }
-  }, [serverAnalysis, deal.arvOverride, deal.arvEstimate]);
+
+    // Update ARV and stale warning if deal ARV changes (but don't reset all fields)
+    if (hasInitialized.current && !analysisChanged) {
+      setArv(currentArv);
+      if (serverAnalysis) {
+        const savedArv = serverAnalysis.arv;
+        const diff = Math.abs(currentArv - savedArv);
+        setShowStaleArvWarning(diff > 1000);
+      }
+    }
+  }, [serverAnalysis, currentArv]);
 
   const totalCosts = n(rehab) + n(closing) + n(holding) + n(selling) + n(other);
   const maxOffer = n(arv) - totalCosts - n(profit);

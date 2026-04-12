@@ -359,6 +359,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /usage:
+    get:
+      operationId: getUsage
+      tags: [deals]
+      summary: Get current monthly analysis usage for the user
+      responses:
+        "200":
+          description: Usage stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageResponse"
+
+  /digest/pending:
+    get:
+      operationId: getDigestPending
+      tags: [deals]
+      summary: Get the latest unread digest event for the current user
+      responses:
+        "200":
+          description: Latest digest, or null if none since last dismiss
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DigestPendingResponse"
+
+  /digest/dismiss:
+    post:
+      operationId: dismissDigest
+      tags: [deals]
+      summary: Mark the digest banner as dismissed
+      responses:
+        "204":
+          description: Dismissed
+
+  /session/ping:
+    post:
+      operationId: sessionPing
+      tags: [deals]
+      summary: Update the user's last_seen_at timestamp
+      responses:
+        "204":
+          description: Updated
+
+  /triage:
+    get:
+      operationId: getTriageDeals
+      tags: [deals]
+      summary: Get all deals with triage data for the screener dashboard
+      responses:
+        "200":
+          description: Triage deal list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriageResponse"
+
+  /triage/stats:
+    get:
+      operationId: getTriageStats
+      tags: [deals]
+      summary: Summary counts for the triage dashboard header
+      responses:
+        "200":
+          description: Triage stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriageStats"
+
   /seed:
     post:
       operationId: seedData
@@ -937,6 +1007,161 @@ components:
         - flaggedFarApart
         - createdAt
         - updatedAt
+
+    UsageResponse:
+      type: object
+      properties:
+        used:
+          type: integer
+        cap:
+          type: integer
+        billingMonth:
+          type: string
+        remaining:
+          type: integer
+      required:
+        - used
+        - cap
+        - billingMonth
+        - remaining
+
+    DigestPendingResponse:
+      type: object
+      properties:
+        hasPending:
+          type: boolean
+          description: True when there is an unread digest since the last dismiss
+        totalScreened:
+          type: integer
+        worthALook:
+          type: integer
+        closeCall:
+          type: integer
+        ranAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - hasPending
+        - totalScreened
+        - worthALook
+        - closeCall
+        - ranAt
+
+    TriageDeal:
+      type: object
+      description: A deal row as shown in the triage screener dashboard
+      properties:
+        id:
+          type: integer
+        hasDeal:
+          type: boolean
+          description: True when a deal record exists for this job. False means still pending/failed before deal creation.
+        address:
+          type: string
+        askingPrice:
+          type: ["number", "null"]
+        arvEstimate:
+          type: ["number", "null"]
+        maxOffer:
+          type: ["number", "null"]
+        gapToAsking:
+          type: ["number", "null"]
+          description: askingPrice minus maxOffer. Negative means asking is below max offer (good deal).
+        signal:
+          type: ["string", "null"]
+          enum: [strong_candidate, close_review_manually, likely_pass, null]
+          description: Signal from saved offer analysis. Null if no offer has been saved.
+        confidenceLevel:
+          type: ["string", "null"]
+          enum: [high, medium, low, null]
+        flaggedFarApart:
+          type: boolean
+          description: True if gap to asking exceeds the auto-filter threshold (default $100k)
+        triageStatus:
+          type: string
+          enum: [pending, processing, done, failed]
+          description: Processing status from batch_jobs. 'done' means fully analyzed.
+        errorMessage:
+          type: ["string", "null"]
+          description: Reason for failure if triageStatus is 'failed'
+        source:
+          type: string
+          enum: [email, manual]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - hasDeal
+        - address
+        - askingPrice
+        - arvEstimate
+        - maxOffer
+        - gapToAsking
+        - signal
+        - confidenceLevel
+        - flaggedFarApart
+        - triageStatus
+        - errorMessage
+        - source
+        - createdAt
+
+    TriageResponse:
+      type: object
+      properties:
+        strong:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriageDeal"
+        closeCall:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriageDeal"
+        likelyPass:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriageDeal"
+        analyzing:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriageDeal"
+        failed:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriageDeal"
+      required:
+        - strong
+        - closeCall
+        - likelyPass
+        - analyzing
+        - failed
+
+    TriageStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        strong:
+          type: integer
+        closeCall:
+          type: integer
+        likelyPass:
+          type: integer
+        analyzing:
+          type: integer
+        failed:
+          type: integer
+        lastUpdatedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - total
+        - strong
+        - closeCall
+        - likelyPass
+        - analyzing
+        - failed
+        - lastUpdatedAt
 
     SaveOfferAnalysisBody:
       type: object

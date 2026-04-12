@@ -89,33 +89,9 @@ These are engineering hygiene items — no new user-facing behavior, but they re
 
 ## Part B — Batch Screener (Core v1.2 Feature)
 
-## Feature 1: Batch Address Intake
+> **Note:** Batch Address Intake (CSV/paste) has been deferred to a future phase. v1.2 focuses on email forwarding intake as the primary volume workflow. This validates whether automated email parsing solves the user's volume challenge before investing in additional intake methods.
 
-### Problem
-
-The current new deal form accepts one address at a time. Entering 30 addresses individually is not a realistic workflow improvement.
-
-### Required behavior
-
-- Add a "Batch Screen" button or tab on the dashboard (separate from "New Deal").
-- User can either:
-  - **Paste a list** — a textarea that accepts one address per line, or comma-separated, or copied from a spreadsheet column
-  - **Upload a CSV** — single column of addresses, with or without a header row
-- An optional second column in the CSV (or a second textarea) accepts the asking price for each address.
-- After submission, the tool queues all addresses for background auto-analysis. The user does not wait on screen — they are taken to the Triage Dashboard immediately, where results populate as they complete.
-- Each address is processed using the same logic as a normal deal creation: geocode → property lookup → comp fetch → ARV calculation → signal determination.
-- Addresses that fail to geocode or return zero comps are flagged in the triage view as "Could not analyze" with a reason.
-
-### Edge cases
-
-- Duplicate addresses in the batch: process once, show once.
-- Address not found by geocoder: mark as "Address not recognized" — do not create a deal record.
-- Comp fetch returns zero results: mark as "No comps found" — create the deal record but flag it for manual review.
-- Batch size limit: cap at 100 addresses per batch submission to manage API costs; show a clear error if exceeded.
-
----
-
-## Feature 2: Triage Dashboard
+## Feature 1: Triage Dashboard
 
 ### Problem
 
@@ -158,7 +134,7 @@ The current pipeline dashboard shows all saved deals in a flat list sorted by da
 
 ---
 
-## Feature 3: Quick-Pass Auto-Filter
+## Feature 2: Quick-Pass Auto-Filter
 
 ### Problem
 
@@ -174,7 +150,7 @@ The user explicitly stated: "Typically if I'm off by more than $100k from their 
 
 ---
 
-## Feature 4: Email Forwarding Intake
+## Feature 3: Email Forwarding Intake (Primary Volume Workflow)
 
 ### Problem
 
@@ -182,14 +158,17 @@ A large portion of the user's deal flow arrives via email from wholesalers. Toda
 
 > "What would make this insanely good is if it could go through my emails and analyze all of them automatically."
 
+**This feature is the primary volume solution for v1.2.** By supporting multiple emails forwarded over time, the user can process 20–50 deals per week without any manual address entry — each wholesaler email gets forwarded as it arrives, addresses are extracted automatically, and the triage dashboard populates continuously.
+
 ### Required behavior — MVP (v1.2)
 
 - The app provides a dedicated inbound email address (e.g. `screen@[appname].com` or a user-specific address).
-- The user forwards a wholesaler email to that address.
-- The system parses the email body to extract property addresses using a combination of regex patterns and an LLM extraction call.
-- Each extracted address is queued for auto-analysis exactly as if it had been submitted via the batch intake form.
+- **The user can forward multiple emails** — each forwarded email is processed independently, and results accumulate in the triage dashboard.
+- The system parses each email body to extract property addresses using a combination of regex patterns and an LLM extraction call.
+- Each extracted address is queued for auto-analysis: geocode → property lookup → comp fetch → ARV calculation → signal determination.
 - The user receives a notification (in-app banner or email) when the analysis is complete: "3 properties from your forwarded email have been screened."
 - Addresses the parser could not confidently extract are flagged for manual review, not silently dropped.
+- **Deduplication across emails:** If the same address appears in multiple forwarded emails, process once and reuse the existing result.
 
 ### Out of scope for v1.2
 
@@ -205,7 +184,7 @@ A large portion of the user's deal flow arrives via email from wholesalers. Toda
 
 ---
 
-## Feature 5: Daily Digest View
+## Feature 4: Daily Digest View
 
 ### Problem
 
@@ -227,6 +206,7 @@ The user described wanting to open the app in the morning and have their deals p
 
 ## What v1.2 Will NOT Include
 
+- **Batch Address Intake (CSV/paste)** — deferred to a future phase; email forwarding intake will validate whether automated parsing solves the volume challenge before building additional intake methods
 - Gmail/Outlook OAuth or automatic inbox scanning — too much surface area for v1.2; the forwarding model is sufficient
 - Photo analysis for comp condition detection — deferred to v2.0
 - Multi-user auth — deferred to v1.3
@@ -238,8 +218,7 @@ The user described wanting to open the app in the morning and have their deals p
 
 ### New inputs
 
-- Batch intake: textarea (addresses) + optional asking prices, or CSV upload
-- Inbound forwarded email (system-side input)
+- Inbound forwarded emails (system-side input, supports multiple emails over time)
 - Quick-pass threshold setting (default $100k, user-configurable)
 
 ### New outputs
@@ -254,17 +233,16 @@ The user described wanting to open the app in the morning and have their deals p
 
 ## Edge Cases Summary
 
-| Scenario                            | Expected behavior                                                           |
-| ----------------------------------- | --------------------------------------------------------------------------- |
-| Address in batch cannot be geocoded | Mark "Address not recognized," do not create deal record                    |
-| Comp fetch returns 0 results        | Create deal record, mark "No comps found," show in triage as Low confidence |
-| Asking price not provided           | Show ARV, omit signal score, prompt user to enter asking price to score     |
-| Gap > $100k                         | Auto-mark Likely Pass, collapse in triage view by default                   |
-| ARV confidence is Low               | Show deal but display warning label; do not hide it                         |
-| Same address submitted twice        | Deduplicate, use existing result                                            |
-| Forwarded email has no addresses    | Notify user, do not create any records                                      |
-| Batch exceeds 100 addresses         | Block submission, show clear error with count                               |
-| Background job fails overnight      | Log failure silently, no banner shown, retry next cycle                     |
+| Scenario                                  | Expected behavior                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| Address cannot be geocoded                | Mark "Address not recognized," do not create deal record                    |
+| Comp fetch returns 0 results              | Create deal record, mark "No comps found," show in triage as Low confidence |
+| Asking price not provided                 | Show ARV, omit signal score, prompt user to enter asking price to score     |
+| Gap > $100k                               | Auto-mark Likely Pass, collapse in triage view by default                   |
+| ARV confidence is Low                     | Show deal but display warning label; do not hide it                         |
+| Same address in multiple forwarded emails | Deduplicate, use existing result                                            |
+| Forwarded email has no addresses          | Notify user, do not create any records                                      |
+| Background job fails overnight            | Log failure silently, no banner shown, retry next cycle                     |
 
 ---
 
@@ -272,9 +250,9 @@ The user described wanting to open the app in the morning and have their deals p
 
 The primary user should be able to:
 
-- [ ] Paste or upload 30+ addresses on Monday morning and have results within minutes, without entering each deal manually
+- [ ] Forward multiple wholesaler emails throughout the week and have addresses automatically extracted and queued for screening — no manual address entry required
 - [ ] Open the app and immediately see which deals are worth investigating — without reading every row
-- [ ] Forward a wholesaler email and have addresses automatically queued for screening
+- [ ] Process 20–50 deals per week by forwarding emails as they arrive, with results accumulating in the triage dashboard
 - [ ] Never have to look at a deal that's $100k+ off asking (auto-filtered)
 - [ ] Click through from the triage view into a full deal analysis for any deal that looks promising
 - [ ] Come back the next day and see overnight-processed deals flagged at the top
@@ -286,7 +264,7 @@ The primary user should be able to:
 | Feature                                   | Skill                                                             |
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | Triage dashboard design                   | UX (run /ux before building — this view is the core value prop)   |
-| Batch intake + background processing      | Builder + Grill-Me (architecture: job queue vs. async API calls)  |
 | Email forwarding intake + address parsing | Builder + Grill-Me (email infrastructure decisions before coding) |
+| Background processing for email intake    | Builder + Grill-Me (architecture: job queue vs. async API calls)  |
 | Quick-pass auto-filter + settings         | Builder                                                           |
 | Daily digest banner                       | Builder                                                           |

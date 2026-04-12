@@ -56,16 +56,18 @@ export interface ARVEngineResult {
 
 export function calculateARV(
   dealSqft: number | null | undefined,
-  compsWithJoin: CompWithJoin[]
+  compsWithJoin: CompWithJoin[],
 ): ARVEngineResult {
   const includedComps = compsWithJoin.filter((c) => c.dealComp.included);
 
   const primaryComps = includedComps.filter(
-    (c) => !(c.comp.listingStatus === "active" && c.comp.condition === "remodeled")
+    (c) =>
+      !(c.comp.listingStatus === "active" && c.comp.condition === "remodeled"),
   );
 
   const marketComps = includedComps.filter(
-    (c) => c.comp.listingStatus === "active" && c.comp.condition === "remodeled"
+    (c) =>
+      c.comp.listingStatus === "active" && c.comp.condition === "remodeled",
   );
 
   const weightedEntries: { price: number; weight: number }[] = [];
@@ -75,7 +77,9 @@ export function calculateARV(
     const price = comp.salePrice ?? comp.listPrice;
     if (!price) continue;
 
-    const conditionWeights = CONDITION_STATUS_WEIGHTS[comp.condition] ?? CONDITION_STATUS_WEIGHTS["unknown"];
+    const conditionWeights =
+      CONDITION_STATUS_WEIGHTS[comp.condition] ??
+      CONDITION_STATUS_WEIGHTS["unknown"];
     const baseWeight = conditionWeights[comp.listingStatus] ?? 0.1;
     const relevanceMultiplier = RELEVANCE_MULTIPLIER[dealComp.relevance] ?? 1.0;
     const finalWeight = baseWeight * relevanceMultiplier;
@@ -105,17 +109,29 @@ export function calculateARV(
 
   const prices = weightedEntries.map((e) => e.price);
   const filteredPrices = removeOutliers(prices);
-  const filteredEntries = weightedEntries.filter((e) => filteredPrices.includes(e.price));
+  const filteredEntries = weightedEntries.filter((e) =>
+    filteredPrices.includes(e.price),
+  );
 
   const totalWeight = filteredEntries.reduce((sum, e) => sum + e.weight, 0);
-  const weightedSum = filteredEntries.reduce((sum, e) => sum + e.price * e.weight, 0);
-  const suggestedArv = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+  const weightedSum = filteredEntries.reduce(
+    (sum, e) => sum + e.price * e.weight,
+    0,
+  );
+  const suggestedArv =
+    totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 
   const remodeledSoldCount = primaryComps.filter(
-    (c) => c.comp.condition === "remodeled" && c.comp.listingStatus === "sold" && c.dealComp.included
+    (c) =>
+      c.comp.condition === "remodeled" &&
+      c.comp.listingStatus === "sold" &&
+      c.dealComp.included,
   ).length;
   const remodeledPendingCount = primaryComps.filter(
-    (c) => c.comp.condition === "remodeled" && c.comp.listingStatus === "pending" && c.dealComp.included
+    (c) =>
+      c.comp.condition === "remodeled" &&
+      c.comp.listingStatus === "pending" &&
+      c.dealComp.included,
   ).length;
   const strongCompCount = remodeledSoldCount + remodeledPendingCount;
 
@@ -130,15 +146,21 @@ export function calculateARV(
     confidenceExplanation = `Only ${strongCompCount} renovated comp(s) available. ARV has moderate confidence. Consider reviewing manually.`;
   } else {
     confidenceLevel = "low";
-    confidenceExplanation = "No renovated comps found. ARV based on average or unknown-condition comps only. Manually verify before making an offer.";
+    confidenceExplanation =
+      "No renovated comps found. ARV based on average or unknown-condition comps only. Manually verify before making an offer.";
   }
 
   const pricePerSqft =
-    dealSqft && dealSqft > 0 ? Math.round((suggestedArv / dealSqft) * 10) / 10 : null;
+    dealSqft && dealSqft > 0
+      ? Math.round((suggestedArv / dealSqft) * 10) / 10
+      : null;
 
   const marketActiveAvg =
     marketComps.length > 0
-      ? marketComps.reduce((sum, m) => sum + (m.comp.listPrice ?? m.comp.salePrice ?? 0), 0) / marketComps.length
+      ? marketComps.reduce(
+          (sum, m) => sum + (m.comp.listPrice ?? m.comp.salePrice ?? 0),
+          0,
+        ) / marketComps.length
       : null;
 
   let marketSignal: string | null = null;
@@ -146,22 +168,26 @@ export function calculateARV(
     marketSignal = `Active renovated comps average $${marketActiveAvg.toLocaleString()} — below the ARV estimate of $${suggestedArv.toLocaleString()}. This may signal a softening market. Use caution.`;
   }
 
-  const contributing = filteredEntries.map((entry, i) => {
-    const origItem = primaryComps.find((c) => {
-      const price = c.comp.salePrice ?? c.comp.listPrice;
-      return price === entry.price;
-    });
-    if (!origItem) return null;
-    return {
-      compId: origItem.comp.id,
-      address: origItem.comp.address,
-      salePrice: entry.price,
-      condition: origItem.comp.condition,
-      listingStatus: origItem.comp.listingStatus,
-      weight: Math.round(entry.weight * 100) / 100,
-      adjustedContribution: Math.round((entry.price * entry.weight) / totalWeight),
-    };
-  }).filter(Boolean) as ARVEngineResult["contributingComps"];
+  const contributing = filteredEntries
+    .map((entry, i) => {
+      const origItem = primaryComps.find((c) => {
+        const price = c.comp.salePrice ?? c.comp.listPrice;
+        return price === entry.price;
+      });
+      if (!origItem) return null;
+      return {
+        compId: origItem.comp.id,
+        address: origItem.comp.address,
+        salePrice: entry.price,
+        condition: origItem.comp.condition,
+        listingStatus: origItem.comp.listingStatus,
+        weight: Math.round(entry.weight * 100) / 100,
+        adjustedContribution: Math.round(
+          (entry.price * entry.weight) / totalWeight,
+        ),
+      };
+    })
+    .filter(Boolean) as ARVEngineResult["contributingComps"];
 
   const methodology = `Weighted average using ${filteredEntries.length} comp(s) after outlier removal. Weights: remodeled+sold=1.0, remodeled+pending=0.85, remodeled+active=0.30 (directional only), average+sold=0.35, unknown=0.20. Relevance multipliers applied (high=1.2x, normal=1.0x, low=0.6x).`;
 
@@ -183,6 +209,14 @@ export function calculateARV(
     totalWeightedComps: filteredEntries.length,
   };
 }
+
+/**
+ * Quick-pass auto-filter threshold.
+ * If asking price exceeds max offer by more than this amount, the deal is
+ * automatically flagged as "too far apart" and collapsed in the triage view.
+ * Default: $100,000. Will be user-configurable in a future release.
+ */
+export const QUICK_PASS_THRESHOLD_DEFAULT = 100_000;
 
 export function calculateOffer(params: {
   arv: number;
@@ -209,8 +243,12 @@ export function calculateOffer(params: {
     askingPrice,
   } = params;
 
-  const totalCosts = rehabCost + closingCosts + holdingCosts + sellingCosts + otherCosts;
-  const targetProfit = Math.max(desiredProfitAmount, arv * (targetReturnPct / 100));
+  const totalCosts =
+    rehabCost + closingCosts + holdingCosts + sellingCosts + otherCosts;
+  const targetProfit = Math.max(
+    desiredProfitAmount,
+    arv * (targetReturnPct / 100),
+  );
   const maxOffer = arv - totalCosts - targetProfit;
 
   let projectedReturn: number | null = null;
@@ -221,8 +259,10 @@ export function calculateOffer(params: {
     projectedReturn = arv > 0 ? Math.round((profit / arv) * 10000) / 100 : null;
   }
 
-  const gapToAsking = askingPrice != null ? Math.round(askingPrice - maxOffer) : null;
-  const flaggedFarApart = gapToAsking !== null && gapToAsking > 100000;
+  const gapToAsking =
+    askingPrice != null ? Math.round(askingPrice - maxOffer) : null;
+  const flaggedFarApart =
+    gapToAsking !== null && gapToAsking > QUICK_PASS_THRESHOLD_DEFAULT;
 
   let signal: "strong_candidate" | "close_review_manually" | "likely_pass";
   let signalExplanation: string;

@@ -5,6 +5,8 @@ import compsRouter from "./comps";
 import seedRouter from "./seed";
 import geocodeRouter from "./geocode";
 import propertiesRouter from "./properties";
+import triageRouter from "./triage";
+import digestRouter from "./digest";
 
 const router: IRouter = Router();
 
@@ -14,5 +16,7 @@ router.use(compsRouter);
 router.use(seedRouter);
 router.use(geocodeRouter);
 router.use(propertiesRouter);
+router.use(triageRouter);
+router.use(digestRouter);
 
 export default router;

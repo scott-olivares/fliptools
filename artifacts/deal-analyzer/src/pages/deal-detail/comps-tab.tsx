@@ -2,12 +2,26 @@ import { useState, useMemo } from "react";
 import {
   useGetDealComps,
   useUpdateDealComp,
+  useAddCompToDeal,
 } from "@workspace/api-client-react";
 import type { DealDetail, DealComp } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2,
   Circle,
@@ -16,6 +30,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  Plus,
 } from "lucide-react";
 
 type SortKey = "address" | "ppsqft" | "beds" | "distance";
@@ -43,11 +58,41 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
   const queryClient = useQueryClient();
   const { data: compsList, isLoading } = useGetDealComps(deal.id);
   const updateComp = useUpdateDealComp();
+  const addComp = useAddCompToDeal();
+  const { toast } = useToast();
 
   const [weightOpen, setWeightOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("distance");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [maxDistance, setMaxDistance] = useState(0.5);
+  const [manualCompOpen, setManualCompOpen] = useState(false);
+  const [manualCompForm, setManualCompForm] = useState<{
+    address: string;
+    salePrice: string;
+    listPrice: string;
+    sqft: string;
+    lotSize: string;
+    beds: string;
+    baths: string;
+    soldDate: string;
+    listingStatus: "sold" | "pending" | "active";
+    propertyType: string;
+    condition: "remodeled" | "average" | "unknown";
+    source: string;
+  }>({
+    address: "",
+    salePrice: "",
+    listPrice: "",
+    sqft: "",
+    lotSize: "",
+    beds: "",
+    baths: "",
+    soldDate: "",
+    listingStatus: "sold",
+    propertyType: "SFR",
+    condition: "average",
+    source: "Manual Entry",
+  });
 
   const compsQueryKey = [`/api/deals/${deal.id}/comps`];
   const arvQueryKey = [`/api/deals/${deal.id}/arv`];
@@ -109,6 +154,65 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
       setSortKey(key);
       setSortDir("asc");
     }
+  };
+
+  const handleManualCompSubmit = async () => {
+    const newComp = {
+      address: manualCompForm.address,
+      salePrice: manualCompForm.salePrice
+        ? parseFloat(manualCompForm.salePrice)
+        : null,
+      listPrice: manualCompForm.listPrice
+        ? parseFloat(manualCompForm.listPrice)
+        : null,
+      sqft: manualCompForm.sqft ? parseInt(manualCompForm.sqft) : null,
+      lotSize: manualCompForm.lotSize
+        ? parseFloat(manualCompForm.lotSize)
+        : null,
+      beds: manualCompForm.beds ? parseFloat(manualCompForm.beds) : null,
+      baths: manualCompForm.baths ? parseFloat(manualCompForm.baths) : null,
+      soldDate: manualCompForm.soldDate || null,
+      listingStatus: manualCompForm.listingStatus,
+      propertyType: manualCompForm.propertyType,
+      condition: manualCompForm.condition,
+      source: manualCompForm.source.slice(0, 100), // Limit to 100 chars for security
+      distanceMiles: null,
+      latitude: null,
+      longitude: null,
+    };
+
+    addComp.mutate(
+      { id: deal.id, data: { newComp, included: true, relevance: "normal" } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: compsQueryKey });
+          queryClient.invalidateQueries({ queryKey: arvQueryKey });
+          setManualCompOpen(false);
+          setManualCompForm({
+            address: "",
+            salePrice: "",
+            listPrice: "",
+            sqft: "",
+            lotSize: "",
+            beds: "",
+            baths: "",
+            soldDate: "",
+            listingStatus: "sold",
+            propertyType: "SFR",
+            condition: "average",
+            source: "Manual Entry",
+          });
+
+          // Show user-friendly warning about manual comps
+          toast({
+            title: "Comp added successfully",
+            description:
+              "Note: We don't know how far away this property is from your subject property, so it won't be included in distance sorting.",
+            variant: "default",
+          });
+        },
+      },
+    );
   };
 
   const allCompsCount = compsList?.length ?? 0;
@@ -303,6 +407,235 @@ export default function CompsTab({ deal }: { deal: DealDetail }) {
             </Card>
           )}
         </div>
+      </div>
+
+      {/* Add Manual Comp Button */}
+      <div className="flex justify-end">
+        <Dialog open={manualCompOpen} onOpenChange={setManualCompOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Comp Manually
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Manual Comp</DialogTitle>
+              <DialogDescription>
+                Enter details for a comparable property you know about.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="address">Address *</Label>
+                  <Input
+                    id="address"
+                    value={manualCompForm.address}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        address: e.target.value,
+                      })
+                    }
+                    placeholder="123 Main St, City, State"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="salePrice">Sale Price</Label>
+                  <Input
+                    id="salePrice"
+                    type="number"
+                    value={manualCompForm.salePrice}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        salePrice: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="listPrice">List Price</Label>
+                  <Input
+                    id="listPrice"
+                    type="number"
+                    value={manualCompForm.listPrice}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        listPrice: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sqft">Square Feet</Label>
+                  <Input
+                    id="sqft"
+                    type="number"
+                    value={manualCompForm.sqft}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        sqft: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lotSize">Lot Size (acres)</Label>
+                  <Input
+                    id="lotSize"
+                    type="number"
+                    step="0.01"
+                    value={manualCompForm.lotSize}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        lotSize: e.target.value,
+                      })
+                    }
+                    placeholder="0.25"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="beds">Bedrooms</Label>
+                  <Input
+                    id="beds"
+                    type="number"
+                    step="0.5"
+                    value={manualCompForm.beds}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        beds: e.target.value,
+                      })
+                    }
+                    placeholder="3"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="baths">Bathrooms</Label>
+                  <Input
+                    id="baths"
+                    type="number"
+                    step="0.5"
+                    value={manualCompForm.baths}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        baths: e.target.value,
+                      })
+                    }
+                    placeholder="2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="soldDate">Sold Date</Label>
+                  <Input
+                    id="soldDate"
+                    type="date"
+                    value={manualCompForm.soldDate}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        soldDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="listingStatus">Listing Status *</Label>
+                  <select
+                    id="listingStatus"
+                    className="w-full h-10 px-3 py-2 text-sm bg-transparent border border-input rounded-md outline-none focus:border-primary"
+                    value={manualCompForm.listingStatus}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        listingStatus: e.target.value as
+                          | "sold"
+                          | "pending"
+                          | "active",
+                      })
+                    }
+                  >
+                    <option value="sold">Sold</option>
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="propertyType">Property Type *</Label>
+                  <Input
+                    id="propertyType"
+                    value={manualCompForm.propertyType}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        propertyType: e.target.value,
+                      })
+                    }
+                    placeholder="SFR"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="condition">Condition *</Label>
+                  <select
+                    id="condition"
+                    className="w-full h-10 px-3 py-2 text-sm bg-transparent border border-input rounded-md outline-none focus:border-primary"
+                    value={manualCompForm.condition}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        condition: e.target.value as
+                          | "remodeled"
+                          | "average"
+                          | "unknown",
+                      })
+                    }
+                  >
+                    <option value="remodeled">Remodeled</option>
+                    <option value="average">Average</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="source">Source *</Label>
+                  <Input
+                    id="source"
+                    value={manualCompForm.source}
+                    onChange={(e) =>
+                      setManualCompForm({
+                        ...manualCompForm,
+                        source: e.target.value,
+                      })
+                    }
+                    placeholder="Manual Entry"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setManualCompOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleManualCompSubmit}
+                disabled={!manualCompForm.address || addComp.isPending}
+              >
+                {addComp.isPending ? "Adding..." : "Add Comp"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Distance filter bar */}

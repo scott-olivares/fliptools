@@ -1,0 +1,29 @@
+# Build & dependency artifacts
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.cache/**
+**/.next/**
+**/.nuxt/**
+**/coverage/**
+**/.turbo/**
+**/.vercel/**
+
+# Sensitive files
+.env*
+*.pem
+*.key
+*.crt
+id_rsa
+id_ed25519
+secrets.json
+credentials.json
+
+# Logs & temp files
+*.log
+temp*
+tmp*
+
+# OS junk
+.DS_Store
+Thumbs.db

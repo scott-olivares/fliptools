@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "pnpm-9_x", "openssl"]
+nixPkgs = ["nodejs_24", "pnpm-9_x", "openssl"]
 
 [phases.install]
 cmds = ["pnpm install --no-frozen-lockfile"]
@@ -8,4 +8,7 @@ cmds = ["pnpm install --no-frozen-lockfile"]
 cmds = ["cd artifacts/api-server && pnpm build"]
 
 [start]
-cmd = "cd artifacts/api-server && pnpm start"
+# Run API server and batch worker as sibling processes.
+# The worker handles: email polling (IMAP), job processing, and nightly digest.
+# If the worker crashes it does not take down the API server, and vice versa.
+cmd = "node --enable-source-maps artifacts/api-server/dist/index.mjs & node --enable-source-maps artifacts/api-server/dist/worker.mjs & wait"

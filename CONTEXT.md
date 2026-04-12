@@ -4,6 +4,26 @@ This file contains detailed context, session continuity notes, deployment status
 
 ---
 
+## 🚀 Quick Resume (Apr 12, 2026)
+
+**Current Phase:** v1.2 "Batch Screener"  
+**Status:** Part A ✅ complete, Part B 🚧 in progress — B1–B6 done, B7 (daily digest) next  
+**Next Task:** Deploy v1.2 — push to Railway, add INTAKE*EMAIL*\* env vars, verify worker starts  
+**Production:** https://fliptools.up.railway.app/ (v1.1a live, v1.2 not yet deployed)
+
+**Key files recently modified:**
+
+- `lib/db/src/schema/batch_jobs.ts` — new table (userId, address, status, dealId, sourceRef, meta)
+- `lib/db/src/schema/usage_logs.ts` — new table (userId, dealId, billingMonth)
+- `artifacts/api-server/src/routes/triage.ts` — GET /triage + GET /triage/stats
+- `artifacts/api-server/src/worker.ts` — job queue worker + email poll loop + SIGTERM shutdown
+- `artifacts/api-server/src/lib/emailPoller.ts` — IMAP poller, address extraction, dedup
+- `artifacts/deal-analyzer/src/pages/triage.tsx` — Screener page (grouped signal view)
+- `artifacts/deal-analyzer/src/components/layout.tsx` — added Screener nav link
+- `lib/api-spec/openapi.yaml` — added /triage, /triage/stats, TriageDeal, TriageResponse, TriageStats
+
+---
+
 ## Monorepo layout (detailed)
 
 ```
@@ -239,29 +259,64 @@ Also fixed during review: pre-existing type errors across comps-tab, property-ta
 
 ---
 
-## v1.2 Task Brief — Batch Screener (Apr 11, 2026)
+## v1.2 Progress — Batch Screener (Apr 11, 2026)
 
-### What we're building
-A batch address screening system that processes 20-100 property addresses asynchronously, displays ranked results in a triage dashboard, and accepts addresses via paste/CSV upload or email forwarding.
+### ✅ Part A Complete (100%)
 
-### Why
-The primary user receives 20-50 deal leads per week but only has time to manually analyze 5-10. The rest are skipped. This feature enables screening the full list automatically, surfacing the strong candidates and filtering out obvious passes so no good deals are missed.
+All deferred v1.1a items + code quality fixes are shipped:
 
-### Scope (in)
-**Part A — Carried over from v1.1a:**
-- Manual comp entry UI
-- Print/PDF export via `window.print()`
-- 7 code quality fixes from v1.1a review
+1. **Manual comp entry** - Dialog form in comps-tab.tsx, calls POST /api/deals/:id/comps with newComp body
+2. **Print/PDF export** - Print button + print CSS in index.css (lines 109-227), shows all tabs when printing
+3. **TOCTOU fix** - Delete cascade uses DELETE...RETURNING inside transaction (deals.ts:328-377)
+4. **Structured error logging** - JSON logs with dealId/address/provider for comp fetch failures (deals.ts:200-214)
+5. **useEffect stability** - Added hasInitialized ref to prevent form resets (offer-tab.tsx:87-137)
+6. **Optimistic UI** - Deal status selector updates immediately with rollback (index.tsx:50-72)
+7. **Type safety** - Removed 'as any' cast, using getCalculateArvQueryKey helper
+8. **Code cleanup** - Removed unused imports, deduplicated button variant maps
 
-**Part B — Batch screener core:**
-- Batch intake: textarea (paste addresses) + CSV upload
-- Email forwarding: dedicated Gmail + IMAP poller checking every 15 min
-- Triage dashboard: ranked deal list sorted by signal strength
-- Quick-pass auto-filter: deals >$100k off asking auto-flagged as "Likely Pass"
-- Daily digest: re-process new unanalyzed deals overnight, show banner on login
-- Usage tracking: hard-coded 100 properties/month limit with counter in UI
+**Code review fixes applied:**
+
+- User-friendly warning for manual comps: "We don't know how far away this property is..."
+- Error stacks hidden in production: `process.env.NODE_ENV === "production" ? undefined : err?.stack`
+- Source field limited to 100 chars for XSS prevention
+
+**Files modified (Part A):**
+
+- artifacts/deal-analyzer/src/pages/deal-detail/comps-tab.tsx
+- artifacts/deal-analyzer/src/pages/deal-detail/index.tsx
+- artifacts/deal-analyzer/src/pages/deal-detail/offer-tab.tsx
+- artifacts/deal-analyzer/src/pages/dashboard.tsx
+- artifacts/deal-analyzer/src/components/ui/button.tsx
+- artifacts/deal-analyzer/src/index.css
+- artifacts/api-server/src/routes/deals.ts
+
+---
+
+### ✅ Part B Progress
+
+**Scope change (Apr 11, 2026):** Batch Address Intake (CSV/paste) removed from v1.2, deferred to future phase.
+
+- ✅ B1: batch_jobs + usage_logs DB tables (userId column on batch_jobs for v1.3 scoping)
+- ✅ B2: Triage dashboard UI — /screener route, signal-grouped sections, 15s poll
+- ✅ B3: Triage API — GET /triage + GET /triage/stats (separate endpoints, independent poll intervals)
+- ✅ B4: Job queue worker — serial processing, 2.5s delay, usage cap, SIGTERM graceful shutdown
+- ✅ B5: Quick-pass auto-filter — $100k threshold as named constant in arvEngine.ts
+- ✅ B6: Email IMAP poller — imapflow + mailparser, regex address extraction, dedup, marks read
+- ✅ B7: Daily digest — nightly cron at 6 AM UTC (2 AM CT), digest_events + user_state tables, banner in Layout
+- ✅ B8: Usage cap enforcement — 429 on POST /deals, shared usageCap.ts helper, GET /usage endpoint
+
+**Code review fixes applied (Apr 12, 2026):**
+
+- Fixed offerByDeal map bug (positional index → keyed by dealId)
+- Added 30-day window to both triage endpoints
+- Added userId scoping (hardcoded "default", TODO comment for v1.3)
+- Bulk dealComps insert in worker (was serial loop)
+- SIGTERM/SIGINT graceful shutdown on worker
+- Stats endpoint polls at 5s, full list at 15s (independent intervals)
 
 ### Scope (out / later)
+
+- **Batch Address Intake (CSV/paste)** — deferred to future phase; email intake validates volume workflow first
 - Payment integration (deferred until 2-3 paying users)
 - Gmail/Outlook OAuth (using IMAP poller instead)
 - Automatic inbox scanning (manual forwarding only)
@@ -271,6 +326,7 @@ The primary user receives 20-50 deal leads per week but only has time to manuall
 ### Key decisions made
 
 **1. Pricing/Monetization:**
+
 - Free tier: 10 properties/month, no batch upload
 - Pro tier: 100 properties/month, $29-49/mo (not built yet, just track usage)
 - v1.2 ships with hard-coded 100/mo limit for primary user
@@ -278,6 +334,7 @@ The primary user receives 20-50 deal leads per week but only has time to manuall
 - Return 429 error when exceeded
 
 **2. Job infrastructure:**
+
 - Database-backed queue (`batch_jobs` table)
 - Worker process runs in same Railway container as API (separate npm script)
 - Worker polls DB every 10 seconds for pending jobs
@@ -286,6 +343,7 @@ The primary user receives 20-50 deal leads per week but only has time to manuall
 - No Redis/BullMQ (keeps it simple and free)
 
 **3. Email infrastructure:**
+
 - Dedicated Gmail account (e.g., `fliptools.intake@gmail.com`)
 - IMAP poller checks inbox every 15 minutes
 - Parse email body with regex for addresses
@@ -294,6 +352,7 @@ The primary user receives 20-50 deal leads per week but only has time to manuall
 - Upgrade to paid service (SendGrid/Postmark) only when needed
 
 **4. Batch processing UX:**
+
 - Show partial results immediately as they complete (don't wait for full batch)
 - Live progress: "23 of 50 complete" with updating list
 - User can click into completed deals while others process
@@ -302,18 +361,21 @@ The primary user receives 20-50 deal leads per week but only has time to manuall
 - Failed addresses: flag with clear reason ("Address not found → Check for typos"), no auto-retry
 
 **5. Daily digest:**
+
 - Only process NEW deals that haven't been analyzed yet
 - Don't re-fetch comps for existing deals (too expensive)
 - Run nightly at 2 AM
 - In-app banner only (no email/push in v1.2)
 
 ### Risks / watch-outs
+
 - **API costs:** Serial processing with delays keeps this manageable, but monitor RentCast usage ($0.15-0.40/property)
 - **Email parsing accuracy:** Regex-based parsing may miss addresses in weird formats—flag for manual review instead of silently dropping
 - **Gmail rate limits:** IMAP polling every 15 min is well under limits for single user, but track if issues arise
 - **Worker process reliability:** If worker crashes, jobs stay in DB as "pending" but won't auto-restart—add health check or manual restart command
 
 ### Suggested starting point
+
 1. **Part A first** (lower risk, builds confidence):
    - A1: Manual comp entry (1-2 hours)
    - A2: Print CSS (1 hour)
