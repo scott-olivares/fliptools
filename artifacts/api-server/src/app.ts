@@ -36,6 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Public routes — no auth required
 app.use("/api/healthz", router);
+app.use("/api/geocode", router); // address autocomplete — no user data, safe to be public
 
 // All other API routes require a valid Clerk session token
 app.use("/api", requireAuth, router);
