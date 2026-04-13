@@ -225,7 +225,7 @@ export default function OfferTab({ deal }: { deal: DealDetail }) {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                   After Repair Value
                 </Label>
-                <FieldInfo tip="Estimated market value once fully renovated. Pulled from the ARV Engine — adjust there first, or type directly here." />
+                <FieldInfo tip="Estimated market value once fully renovated. Pulled from ARV Analysis — adjust there first, or type directly here." />
               </div>
               <CurrencyInput
                 value={arv}
