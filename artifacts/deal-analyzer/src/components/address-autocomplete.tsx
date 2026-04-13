@@ -9,8 +9,6 @@ interface Suggestion {
     house_number?: string;
     road?: string;
     city?: string;
-    town?: string;
-    village?: string;
     state?: string;
     postcode?: string;
     country_code?: string;
@@ -20,13 +18,13 @@ interface Suggestion {
 function formatAddress(s: Suggestion): string {
   const a = s.address;
   const street = [a.house_number, a.road].filter(Boolean).join(" ");
-  const city = a.city || a.town || a.village || "";
-  const state = a.state || "";
-  const zip = a.postcode || "";
+  const city = a.city ?? "";
+  const state = a.state ?? "";
+  const zip = a.postcode ?? "";
   if (street && city && state) {
     return [street, city, state, zip].filter(Boolean).join(", ");
   }
-  return s.display_name.split(", United States")[0];
+  return s.display_name;
 }
 
 interface Props {
@@ -38,7 +36,14 @@ interface Props {
   id?: string;
 }
 
-export function AddressAutocomplete({ value, onChange, onSelect, placeholder, className, id }: Props) {
+export function AddressAutocomplete({
+  value,
+  onChange,
+  onSelect,
+  placeholder,
+  className,
+  id,
+}: Props) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +54,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (q.length < 5) {
+    if (q.length < 3) {
       setSuggestions([]);
       setIsOpen(false);
       return;
@@ -57,13 +62,12 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
     setIsLoading(true);
     try {
       const res = await fetch(
-        `/api/geocode/autocomplete?q=${encodeURIComponent(q)}`
+        `/api/geocode/autocomplete?q=${encodeURIComponent(q)}`,
       );
       if (!res.ok) throw new Error("geocode error");
       const data: Suggestion[] = await res.json();
-      const filtered = data.filter(s => s.address.road || s.address.house_number);
-      setSuggestions(filtered.slice(0, 5));
-      setIsOpen(filtered.length > 0);
+      setSuggestions(data.slice(0, 5));
+      setIsOpen(data.length > 0);
       setActiveIndex(-1);
     } catch {
       setSuggestions([]);
@@ -74,13 +78,19 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(query), 450);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // 300ms debounce — snappier than before (was 450ms)
+    debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [query, fetchSuggestions]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -101,10 +111,10 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
     if (!isOpen) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex(i => Math.min(i + 1, suggestions.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, -1));
+      setActiveIndex((i) => Math.max(i - 1, -1));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
       selectSuggestion(suggestions[activeIndex]);
@@ -127,18 +137,20 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
           autoComplete="off"
           value={query}
           placeholder={placeholder}
-          onChange={e => {
+          onChange={(e) => {
             setQuery(e.target.value);
             onChange(e.target.value);
           }}
-          onFocus={() => { if (suggestions.length > 0) setIsOpen(true); }}
+          onFocus={() => {
+            if (suggestions.length > 0) setIsOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           className={cn(
             "flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-9 py-2 text-sm",
             "ring-offset-background placeholder:text-muted-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            className
+            className,
           )}
         />
       </div>
@@ -153,11 +165,24 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
                 onMouseDown={() => selectSuggestion(s)}
                 className={cn(
                   "flex items-start gap-2.5 px-3 py-2.5 cursor-pointer text-sm transition-colors",
-                  i === activeIndex ? "bg-primary/10 text-primary" : "hover:bg-slate-50"
+                  i === activeIndex
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-slate-50",
                 )}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
-                <span className="leading-snug">{formatted}</span>
+                <div className="leading-snug">
+                  <span className="font-medium">
+                    {s.address.house_number
+                      ? `${s.address.house_number} ${s.address.road}`
+                      : (s.address.road ?? formatted)}
+                  </span>
+                  <span className="text-muted-foreground ml-1">
+                    {[s.address.city, s.address.state, s.address.postcode]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                </div>
               </li>
             );
           })}

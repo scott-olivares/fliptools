@@ -1,26 +1,31 @@
 import { Router } from "express";
 
-interface PhotonFeature {
-  type: "Feature";
-  properties: {
-    osm_id?: number;
-    housenumber?: string;
-    street?: string;
-    name?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    state?: string;
-    postcode?: string;
-    countrycode?: string;
-    type?: string;
+/**
+ * Address autocomplete — backed by Google Places API.
+ *
+ * Requires env var: GOOGLE_PLACES_API_KEY
+ *
+ * This endpoint proxies Google's Place Autocomplete API so the API key
+ * stays server-side and is never exposed to the browser.
+ *
+ * Google Places API docs:
+ * https://developers.google.com/maps/documentation/places/web-service/autocomplete
+ */
+
+interface GooglePrediction {
+  place_id: string;
+  description: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
   };
-  geometry: { type: "Point"; coordinates: [number, number] };
+  terms: { offset: number; value: string }[];
 }
 
-interface PhotonResponse {
-  type: "FeatureCollection";
-  features: PhotonFeature[];
+interface GoogleAutocompleteResponse {
+  status: string;
+  predictions: GooglePrediction[];
+  error_message?: string;
 }
 
 interface AddressSuggestion {
@@ -36,25 +41,33 @@ interface AddressSuggestion {
   };
 }
 
-function toSuggestion(f: PhotonFeature, idx: number): AddressSuggestion {
-  const p = f.properties;
-  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
-  const city = p.city || p.town || p.village || "";
-  const state = p.state || "";
-  const zip = p.postcode || "";
-  const parts = [street, city, state, zip].filter(Boolean);
-  const display_name = parts.join(", ");
+function parsePrediction(p: GooglePrediction): AddressSuggestion {
+  // description is the full formatted address e.g.
+  // "15438 La Subida Dr, Hacienda Heights, CA 91745, USA"
+  const display = p.description.replace(/, USA$/, "").trim();
+
+  // Parse components from terms array: [number+street, city, state+zip, country]
+  const terms = p.terms.map((t) => t.value);
+  const street = terms[0] ?? "";
+  const city = terms[1] ?? "";
+  const stateZip = terms[2] ?? ""; // e.g. "CA 91745" or "CA"
+  const [state, postcode] = stateZip.split(" ");
+
+  // Split street into house number and road
+  const streetMatch = street.match(/^(\d+)\s+(.+)$/);
+  const house_number = streetMatch?.[1];
+  const road = streetMatch?.[2] ?? street;
 
   return {
-    place_id: String(p.osm_id ?? idx),
-    display_name,
+    place_id: p.place_id,
+    display_name: display,
     address: {
-      house_number: p.housenumber,
-      road: p.street,
+      house_number,
+      road,
       city,
       state,
-      postcode: p.postcode,
-      country_code: p.countrycode?.toLowerCase(),
+      postcode,
+      country_code: "us",
     },
   };
 }
@@ -63,39 +76,57 @@ const router = Router();
 
 router.get("/geocode/autocomplete", async (req, res) => {
   const q = String(req.query.q ?? "").trim();
-  if (q.length < 5) {
+  if (q.length < 3) {
     res.json([]);
+    return;
+  }
+
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) {
+    res.status(503).json({ error: "Google Places API key not configured" });
     return;
   }
 
   try {
     const params = new URLSearchParams({
-      q,
-      limit: "8",
-      lang: "en",
-      bbox: "-124.78,24.74,-66.95,49.34",
+      input: q,
+      key: apiKey,
+      types: "address",
+      components: "country:us", // US addresses only
+      language: "en",
     });
 
-    const response = await fetch(`https://photon.komoot.io/api/?${params}`, {
-      headers: {
-        "User-Agent": "DealAnalyzerApp/1.0 (realestate@example.com)",
-      },
-    });
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`,
+    );
 
     if (!response.ok) {
-      res.status(502).json({ error: "Geocoding service unavailable" });
+      res.status(502).json({ error: "Google Places API unavailable" });
       return;
     }
 
-    const data = (await response.json()) as PhotonResponse;
-    const suggestions: AddressSuggestion[] = data.features
-      .filter((f) => f.properties.countrycode?.toLowerCase() === "us")
-      .filter((f) => f.properties.street || f.properties.housenumber)
-      .map(toSuggestion)
-      .slice(0, 5);
+    const data = (await response.json()) as GoogleAutocompleteResponse;
+
+    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          message: "Google Places API error",
+          status: data.status,
+          error_message: data.error_message,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+      res.status(502).json({ error: `Google Places error: ${data.status}` });
+      return;
+    }
+
+    const suggestions: AddressSuggestion[] = (data.predictions ?? [])
+      .slice(0, 5)
+      .map(parsePrediction);
 
     res.json(suggestions);
-  } catch (err) {
+  } catch (err: any) {
     res.status(502).json({ error: "Geocoding request failed" });
   }
 });
