@@ -42,18 +42,36 @@ interface AddressSuggestion {
 }
 
 function parsePrediction(p: GooglePrediction): AddressSuggestion {
-  // description is the full formatted address e.g.
-  // "15438 La Subida Dr, Hacienda Heights, CA 91745, USA"
+  // description: "15438 La Subida Dr, Hacienda Heights, CA 91745, USA"
+  // Strip trailing ", USA" for display
   const display = p.description.replace(/, USA$/, "").trim();
 
-  // Parse components from terms array: [number+street, city, state+zip, country]
+  // Google terms array for a full address:
+  // [0] "15438 La Subida Dr"  (street — number + name combined)
+  // [1] "Hacienda Heights"    (city)
+  // [2] "CA 91745"            (state + optional zip) OR just "CA"
+  // [3] "USA"                 (country — skip)
+  //
+  // For some results terms[2] is "CA" and terms[3] is "91745" and terms[4] is "USA"
+  // so we scan terms for the state abbreviation and zip separately.
   const terms = p.terms.map((t) => t.value);
   const street = terms[0] ?? "";
   const city = terms[1] ?? "";
-  const stateZip = terms[2] ?? ""; // e.g. "CA 91745" or "CA"
-  const [state, postcode] = stateZip.split(" ");
 
-  // Split street into house number and road
+  // Find state (2-letter uppercase) and zip (5 digits) anywhere in remaining terms
+  let state = "";
+  let postcode = "";
+  for (const term of terms.slice(2)) {
+    if (/^[A-Z]{2}$/.test(term)) state = term;
+    else if (/^\d{5}$/.test(term)) postcode = term;
+    else if (/^[A-Z]{2}\s+\d{5}$/.test(term)) {
+      const parts = term.split(" ");
+      state = parts[0];
+      postcode = parts[1];
+    }
+  }
+
+  // Split "15438 La Subida Dr" into house number and road name
   const streetMatch = street.match(/^(\d+)\s+(.+)$/);
   const house_number = streetMatch?.[1];
   const road = streetMatch?.[2] ?? street;
