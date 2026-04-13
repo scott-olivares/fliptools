@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
 import geocodeRouter from "./routes/geocode.js";
+import propertiesRouter from "./routes/properties.js";
 import { logger } from "./lib/logger";
 import { requireAuth } from "./middleware/requireAuth.js";
 
@@ -37,7 +38,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Public routes — no auth required
 app.use("/api/healthz", router);
-app.use("/api", geocodeRouter); // geocode autocomplete is public — no user data
+app.use("/api", geocodeRouter); // address autocomplete — no user data
+app.use("/api", propertiesRouter); // property lookup — no user data, used on new deal form before auth
 
 // All other API routes require a valid Clerk session token
 app.use("/api", requireAuth, router);
