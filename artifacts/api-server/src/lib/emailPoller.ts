@@ -48,22 +48,29 @@ const US_STATES =
  * US street address patterns.
  *
  * Key design decisions:
- * - Both patterns require the match to start at a line boundary (after \n or
- *   start of string) so that orphaned zip codes from the previous line can't
+ * - All patterns require the match to start at a line boundary (after \n or
+ *   start of string) so orphaned zip codes from the previous line can't
  *   get prepended to the next street number.
- * - Pattern 1 (full): number + street + city + state + optional zip — high confidence
- * - Pattern 2 (short): number + street type + city + state on same line — requires
- *   state abbreviation to avoid matching timestamps and other numeric fragments
+ * - All patterns require a US state abbreviation — this is the primary guard
+ *   against false positives like "46 PM Subject" or "92870 Any interest".
+ * - Pattern 3 handles streets without a type suffix (e.g. "4309 Camphor,
+ *   Yorba Linda, CA") which are common in California and other states.
  */
 const ADDRESS_PATTERNS = [
-  // Full address with state abbreviation
+  // Pattern 1: number + street WITH type suffix + city + state + optional zip
   new RegExp(
     `(?:^|\\n)[ \\t]*(\\d{1,5})\\s+((?:[NSEW]\\.?\\s+)?[\\w\\s'.-]{2,40}(?:${STREET_TYPES})\\.?),?\\s+[\\w\\s]{2,30},?\\s+(?:${US_STATES})\\b(?:\\s+\\d{5}(?:-\\d{4})?)?`,
     "gim",
   ),
-  // Short form: number + street name + street type + city + state (all on one line)
+  // Pattern 2: number + street WITH type suffix + city + state (no zip required)
   new RegExp(
     `(?:^|\\n)[ \\t]*(\\d{1,5})\\s+((?:[NSEW]\\.?\\s+)?[\\w\\s'.-]{2,30}(?:${STREET_TYPES})\\.?),?\\s+[\\w\\s]{2,25},?\\s+(?:${US_STATES})\\b`,
+    "gim",
+  ),
+  // Pattern 3: number + short street name (no type suffix) + city + state + zip
+  // Requires zip to compensate for lack of street type — keeps false positive rate low
+  new RegExp(
+    `(?:^|\\n)[ \\t]*(\\d{1,5})\\s+([A-Za-z][\\w\\s'.-]{1,30}),\\s+[\\w\\s]{2,30},\\s+(?:${US_STATES})\\s+\\d{5}\\b`,
     "gim",
   ),
 ];
