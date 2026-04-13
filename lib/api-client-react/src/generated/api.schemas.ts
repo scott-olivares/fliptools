@@ -591,6 +591,7 @@ export interface TriageResponse {
   strong: TriageDeal[];
   closeCall: TriageDeal[];
   likelyPass: TriageDeal[];
+  needsPrice: TriageDeal[];
   analyzing: TriageDeal[];
   failed: TriageDeal[];
 }
@@ -600,6 +601,7 @@ export interface TriageStats {
   strong: number;
   closeCall: number;
   likelyPass: number;
+  needsPrice: number;
   analyzing: number;
   failed: number;
   /** @nullable */

@@ -145,6 +145,7 @@ function TriageSection({
   defaultOpen = true,
   dimRows = false,
   accentClass,
+  hint,
 }: {
   label: string;
   count: number;
@@ -152,6 +153,7 @@ function TriageSection({
   defaultOpen?: boolean;
   dimRows?: boolean;
   accentClass: string;
+  hint?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -181,6 +183,11 @@ function TriageSection({
       {/* Column headers — only visible when expanded */}
       {open && (
         <>
+          {hint && (
+            <p className="px-4 py-2 text-xs text-slate-500 bg-slate-50 border-t border-slate-100">
+              {hint}
+            </p>
+          )}
           <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border-t border-slate-100">
             <div className="flex-1 text-xs text-slate-400 uppercase tracking-wide">
               Address
@@ -339,6 +346,14 @@ export default function TriageDashboard() {
             deals={data.closeCall}
             defaultOpen={true}
             accentClass="bg-amber-400"
+          />
+          <TriageSection
+            label="Needs Asking Price"
+            count={data.needsPrice.length}
+            deals={data.needsPrice}
+            defaultOpen={true}
+            accentClass="bg-violet-400"
+            hint="ARV calculated — add asking price to get a signal"
           />
           <TriageSection
             label="Too Far Apart"

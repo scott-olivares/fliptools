@@ -536,6 +536,22 @@ export const GetTriageDealsResponse = zod.object({
   "source": zod.enum(['email', 'manual']),
   "createdAt": zod.date()
 }).describe('A deal row as shown in the triage screener dashboard')),
+  "needsPrice": zod.array(zod.object({
+  "id": zod.number(),
+  "hasDeal": zod.boolean().describe('True when a deal record exists for this job. False means still pending\/failed before deal creation.'),
+  "address": zod.string(),
+  "askingPrice": zod.number().nullable(),
+  "arvEstimate": zod.number().nullable(),
+  "maxOffer": zod.number().nullable(),
+  "gapToAsking": zod.number().nullable().describe('askingPrice minus maxOffer. Negative means asking is below max offer (good deal).'),
+  "signal": zod.union([zod.literal('strong_candidate'),zod.literal('close_review_manually'),zod.literal('likely_pass'),zod.literal(null)]).nullable().describe('Signal from saved offer analysis. Null if no offer has been saved.'),
+  "confidenceLevel": zod.union([zod.literal('high'),zod.literal('medium'),zod.literal('low'),zod.literal(null)]).nullable(),
+  "flaggedFarApart": zod.boolean().describe('True if gap to asking exceeds the auto-filter threshold (default $100k)'),
+  "triageStatus": zod.enum(['pending', 'processing', 'done', 'failed']).describe('Processing status from batch_jobs. \'done\' means fully analyzed.'),
+  "errorMessage": zod.string().nullable().describe('Reason for failure if triageStatus is \'failed\''),
+  "source": zod.enum(['email', 'manual']),
+  "createdAt": zod.date()
+}).describe('A deal row as shown in the triage screener dashboard')),
   "analyzing": zod.array(zod.object({
   "id": zod.number(),
   "hasDeal": zod.boolean().describe('True when a deal record exists for this job. False means still pending\/failed before deal creation.'),
@@ -579,6 +595,7 @@ export const GetTriageStatsResponse = zod.object({
   "strong": zod.number(),
   "closeCall": zod.number(),
   "likelyPass": zod.number(),
+  "needsPrice": zod.number(),
   "analyzing": zod.number(),
   "failed": zod.number(),
   "lastUpdatedAt": zod.date().nullable()

@@ -31,11 +31,23 @@ interface TriageDeal {
   createdAt: Date;
 }
 
+// A deal needs an asking price when it's done processing and has an ARV
+// but no asking price was provided — it can't be scored yet.
+function needsAskingPrice(row: TriageDeal): boolean {
+  return (
+    row.triageStatus === "done" &&
+    (row.askingPrice == null || row.askingPrice === 0) &&
+    row.arvEstimate != null &&
+    row.arvEstimate > 0
+  );
+}
+
 // Shared grouping logic used by both the list and stats endpoints.
 function groupBySignal(rows: TriageDeal[]) {
   const strong: TriageDeal[] = [];
   const closeCall: TriageDeal[] = [];
   const likelyPass: TriageDeal[] = [];
+  const needsPrice: TriageDeal[] = [];
   const analyzing: TriageDeal[] = [];
   const failed: TriageDeal[] = [];
 
@@ -47,6 +59,9 @@ function groupBySignal(rows: TriageDeal[]) {
       row.triageStatus === "processing"
     ) {
       analyzing.push(row);
+    } else if (needsAskingPrice(row)) {
+      // Done but no asking price — can't score, don't penalize as "Too Far Apart"
+      needsPrice.push(row);
     } else if (row.flaggedFarApart || row.signal === "likely_pass") {
       likelyPass.push(row);
     } else if (row.signal === "strong_candidate") {
@@ -54,7 +69,6 @@ function groupBySignal(rows: TriageDeal[]) {
     } else if (row.signal === "close_review_manually") {
       closeCall.push(row);
     } else {
-      // Done but no offer analysis yet — needs more data before it can be scored
       analyzing.push(row);
     }
   }
@@ -69,7 +83,7 @@ function groupBySignal(rows: TriageDeal[]) {
   strong.sort(byGap);
   closeCall.sort(byGap);
 
-  return { strong, closeCall, likelyPass, analyzing, failed };
+  return { strong, closeCall, likelyPass, needsPrice, analyzing, failed };
 }
 
 // Fetch all batch jobs + offer data for a given user within the triage window,
@@ -171,6 +185,7 @@ router.get("/triage", async (_req, res): Promise<void> => {
       strong: [],
       closeCall: [],
       likelyPass: [],
+      needsPrice: [],
       analyzing: [],
       failed: [],
     });
@@ -212,6 +227,7 @@ router.get("/triage/stats", async (_req, res): Promise<void> => {
     strong: grouped.strong.length,
     closeCall: grouped.closeCall.length,
     likelyPass: grouped.likelyPass.length,
+    needsPrice: grouped.needsPrice.length,
     analyzing: grouped.analyzing.length,
     failed: grouped.failed.length,
     lastUpdatedAt,
