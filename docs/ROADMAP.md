@@ -96,6 +96,7 @@ Batch triage is therefore pulled forward to v1.2 — immediately after fixing th
 | Deal notes with timestamps (activity log per deal)                                   | High     | Builder      |
 | Deal duplication (clone a deal to test different assumptions)                        | Medium   | Builder      |
 | Migrate existing data from userId="default" to real Clerk ID                         | High     | Builder      |
+| Comps review action button — run /ux first to define the interaction                 | High     | UX + Builder |
 
 **Definition of done:** You can give another flipper a login. Their deals are invisible to everyone else. You can onboard paying customers.
 
