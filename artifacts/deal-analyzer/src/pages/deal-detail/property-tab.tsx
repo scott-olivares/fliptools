@@ -2,13 +2,19 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { NumberInput } from "@/components/ui/number-input";
-import { useUpdateDeal } from "@workspace/api-client-react";
+import { useUpdateDeal, customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DealDetail } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -53,13 +59,25 @@ function CriteriaField({
   );
 }
 
-export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDetail; onCompsRefreshed?: () => void }) {
+export default function PropertyTab({
+  deal,
+  onCompsRefreshed,
+}: {
+  deal: DealDetail;
+  onCompsRefreshed?: () => void;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const [lotUnit, setLotUnit] = useState<"acres" | "sqft">("acres");
 
-  const { register, handleSubmit, watch, setValue, formState: { isSubmitting } } = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { isSubmitting },
+  } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       address: deal.address,
@@ -85,12 +103,21 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
     await updateMutation.mutateAsync({ id: deal.id, data });
 
     // ?force=true bypasses the server-side TTL because this is an explicit user action
-    const refreshRes = await fetch(`/api/deals/${deal.id}/comps/refresh?force=true`, { method: "POST" });
-    const refreshData = await refreshRes.json();
+    // Uses customFetch (not raw fetch) so the Clerk auth token is attached automatically
+    const refreshData = await customFetch<{ refreshed: number }>(
+      `/api/deals/${deal.id}/comps/refresh?force=true`,
+      { method: "POST" },
+    );
 
-    await queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}`] });
-    await queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/comps`] });
-    await queryClient.invalidateQueries({ queryKey: [`/api/deals/${deal.id}/arv`] });
+    await queryClient.invalidateQueries({
+      queryKey: [`/api/deals/${deal.id}`],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: [`/api/deals/${deal.id}/comps`],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: [`/api/deals/${deal.id}/arv`],
+    });
 
     onCompsRefreshed?.();
 
@@ -120,14 +147,22 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
                 <Label>Asking Price</Label>
                 <CurrencyInput
                   value={watch("askingPrice") || ""}
-                  onChange={(val) => setValue("askingPrice", val === "" ? 0 : val, { shouldValidate: true })}
+                  onChange={(val) =>
+                    setValue("askingPrice", val === "" ? 0 : val, {
+                      shouldValidate: true,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Living SqFt</Label>
                 <NumberInput
                   value={watch("sqft") ?? ""}
-                  onChange={(val) => setValue("sqft", val === "" ? null : (val as number), { shouldValidate: true })}
+                  onChange={(val) =>
+                    setValue("sqft", val === "" ? null : (val as number), {
+                      shouldValidate: true,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -147,7 +182,9 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
                   <Label>Lot Size</Label>
                   <button
                     type="button"
-                    onClick={() => setLotUnit((u) => u === "acres" ? "sqft" : "acres")}
+                    onClick={() =>
+                      setLotUnit((u) => (u === "acres" ? "sqft" : "acres"))
+                    }
                     className="text-xs text-primary hover:underline font-medium"
                   >
                     {lotUnit === "acres" ? "show sqft" : "show acres"}
@@ -156,16 +193,22 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
                 <NumberInput
                   value={
                     watch("lotSize") != null
-                      ? (lotUnit === "sqft"
-                          ? Math.round((watch("lotSize") as number) * 43560)
-                          : watch("lotSize") as number)
+                      ? lotUnit === "sqft"
+                        ? Math.round((watch("lotSize") as number) * 43560)
+                        : (watch("lotSize") as number)
                       : ""
                   }
                   onChange={(val) => {
-                    if (val === "") { setValue("lotSize", null); return; }
-                    setValue("lotSize", lotUnit === "sqft"
-                      ? parseFloat(((val as number) / 43560).toFixed(5))
-                      : (val as number));
+                    if (val === "") {
+                      setValue("lotSize", null);
+                      return;
+                    }
+                    setValue(
+                      "lotSize",
+                      lotUnit === "sqft"
+                        ? parseFloat(((val as number) / 43560).toFixed(5))
+                        : (val as number),
+                    );
                   }}
                   suffix={lotUnit}
                 />
@@ -260,7 +303,8 @@ export default function PropertyTab({ deal, onCompsRefreshed }: { deal: DealDeta
               Find Comps
             </Button>
             <span className="text-xs text-muted-foreground">
-              Saves property details, applies criteria, and refreshes comp results
+              Saves property details, applies criteria, and refreshes comp
+              results
             </span>
           </CardFooter>
         </form>
