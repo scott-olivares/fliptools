@@ -21,35 +21,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useListDeals, useSeedData } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useListDeals } from "@workspace/api-client-react";
 
 export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data: deals, isLoading, error } = useListDeals();
-  const seedMutation = useSeedData({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
-        setShowSeedConfirm(false);
-      },
-    },
-  });
-
-  function handleSeedClick() {
-    setShowSeedConfirm(true);
-  }
-
-  function handleSeedConfirm() {
-    seedMutation.mutate();
-  }
-
-  function handleSeedCancel() {
-    setShowSeedConfirm(false);
-  }
 
   const filteredDeals =
     deals?.filter((deal) =>
@@ -125,21 +102,12 @@ export default function Dashboard() {
                       <p className="text-sm text-muted-foreground mb-6">
                         {searchTerm
                           ? "Try adjusting your search query."
-                          : "Your pipeline is empty. Add a new deal or load sample data to see the analyzer in action."}
+                          : "Your pipeline is empty. Add a new deal to get started."}
                       </p>
                       {!searchTerm && (
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={handleSeedClick}
-                            isLoading={seedMutation.isPending}
-                          >
-                            Load Sample Data
-                          </Button>
-                          <Link href="/deals/new">
-                            <Button>Create Deal</Button>
-                          </Link>
-                        </div>
+                        <Link href="/deals/new">
+                          <Button>Create Deal</Button>
+                        </Link>
                       )}
                     </div>
                   </td>
@@ -208,37 +176,6 @@ export default function Dashboard() {
           </table>
         </div>
       </Card>
-
-      {/* Seed confirmation dialog */}
-      {showSeedConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">
-              Load Sample Data?
-            </h2>
-            <p className="text-sm text-slate-600 mb-6">
-              This will erase <strong>all existing deals</strong> and replace
-              them with sample data. This cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={handleSeedCancel}
-                disabled={seedMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleSeedConfirm}
-                isLoading={seedMutation.isPending}
-              >
-                Yes, erase and load samples
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
