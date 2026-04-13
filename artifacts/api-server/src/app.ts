@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
+import geocodeRouter from "./routes/geocode.js";
 import { logger } from "./lib/logger";
 import { requireAuth } from "./middleware/requireAuth.js";
 
@@ -36,7 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Public routes — no auth required
 app.use("/api/healthz", router);
-app.use("/api/geocode", router); // address autocomplete — no user data, safe to be public
+app.use("/api", geocodeRouter); // geocode autocomplete is public — no user data
 
 // All other API routes require a valid Clerk session token
 app.use("/api", requireAuth, router);
