@@ -2,11 +2,15 @@ import { useSignIn } from "@clerk/clerk-react";
 import { Building, Zap, Mail, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function LandingPage() {
+interface Props {
+  disableSignIn?: boolean;
+}
+
+export default function LandingPage({ disableSignIn = false }: Props) {
   const { signIn, isLoaded } = useSignIn();
 
   async function handleSignIn() {
-    if (!isLoaded) return;
+    if (!isLoaded || disableSignIn) return;
     await signIn.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",
@@ -26,7 +30,7 @@ export default function LandingPage() {
         </div>
         <Button
           onClick={handleSignIn}
-          disabled={!isLoaded}
+          disabled={!isLoaded || disableSignIn}
           variant="outline"
           size="sm"
         >
@@ -54,7 +58,7 @@ export default function LandingPage() {
 
         <Button
           onClick={handleSignIn}
-          disabled={!isLoaded}
+          disabled={!isLoaded || disableSignIn}
           size="lg"
           className="gap-2 text-base px-8"
         >

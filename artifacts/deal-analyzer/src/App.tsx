@@ -7,6 +7,8 @@ import {
   SignedIn,
   SignedOut,
   useAuth,
+  ClerkLoaded,
+  ClerkLoading,
 } from "@clerk/clerk-react";
 import { useEffect } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
@@ -18,11 +20,9 @@ import TriageDashboard from "@/pages/triage";
 import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable");
-}
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
+  | string
+  | undefined;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,24 +58,45 @@ function Router() {
   );
 }
 
-function App() {
+// If Clerk key is missing entirely (e.g. misconfigured deploy),
+// show the landing page rather than a blank screen or crash.
+function AppContent() {
+  if (!PUBLISHABLE_KEY || PUBLISHABLE_KEY === "pk_test_placeholder") {
+    return <LandingPage disableSignIn />;
+  }
+
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <SignedOut>
-            <LandingPage />
-          </SignedOut>
-          <SignedIn>
-            <AuthTokenBridge />
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-          </SignedIn>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+      {/* Show landing page while Clerk is initializing — no blank flash */}
+      <ClerkLoading>
+        <LandingPage disableSignIn />
+      </ClerkLoading>
+
+      <ClerkLoaded>
+        <SignedOut>
+          <LandingPage />
+        </SignedOut>
+        <SignedIn>
+          <AuthTokenBridge />
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+        </SignedIn>
+      </ClerkLoaded>
+
+      <Toaster />
     </ClerkProvider>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AppContent />
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
