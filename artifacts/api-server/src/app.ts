@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
+import healthRouter from "./routes/health.js";
 import geocodeRouter from "./routes/geocode.js";
 import propertiesRouter from "./routes/properties.js";
 import { logger } from "./lib/logger";
@@ -37,9 +38,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Public routes — no auth required
-app.use("/api/healthz", router);
-app.use("/api", geocodeRouter); // address autocomplete — no user data
-app.use("/api", propertiesRouter); // property lookup — no user data, used on new deal form before auth
+app.use("/api", healthRouter); // /api/healthz — uptime check
+app.use("/api", geocodeRouter); // /api/geocode/autocomplete — no user data
+app.use("/api", propertiesRouter); // /api/properties/lookup — no user data
 
 // All other API routes require a valid Clerk session token
 app.use("/api", requireAuth, router);
