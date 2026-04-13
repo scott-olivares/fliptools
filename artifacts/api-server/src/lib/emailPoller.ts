@@ -38,37 +38,72 @@ export function isEmailConfigured(): boolean {
 
 // ─── Address extraction ───────────────────────────────────────────────────────
 
+const STREET_TYPES =
+  "Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Circle|Cir|Place|Pl|Terrace|Ter|Trail|Trl|Highway|Hwy|Pkwy|Parkway|Loop";
+
+const US_STATES =
+  "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
+
 /**
- * US street address patterns. Intentionally broad — we'd rather extract a
- * false positive (which geocoding will reject) than miss a real address.
+ * US street address patterns.
  *
- * Matches patterns like:
- *   123 Main Street, Dallas, TX 75201
- *   456 Oak Ave Dallas TX
- *   789 N. Elm Blvd, Suite 100, Irving, Texas 75039
+ * Key design decisions:
+ * - Both patterns require the match to start at a line boundary (after \n or
+ *   start of string) so that orphaned zip codes from the previous line can't
+ *   get prepended to the next street number.
+ * - Pattern 1 (full): number + street + city + state + optional zip — high confidence
+ * - Pattern 2 (short): number + street type + city + state on same line — requires
+ *   state abbreviation to avoid matching timestamps and other numeric fragments
  */
 const ADDRESS_PATTERNS = [
-  // Full address: number + street + city + state + optional zip
-  /\b(\d{1,5})\s+((?:[NSEW]\.?\s+)?[\w\s'.-]{2,40}(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Circle|Cir|Place|Pl|Terrace|Ter|Trail|Trl|Highway|Hwy|Pkwy|Parkway|Loop)\.?),?\s+[\w\s]{2,30},?\s+(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b(?:\s+\d{5}(?:-\d{4})?)?/gi,
-  // Shorter: number + street type only (city/state on next line — common in wholesaler emails)
-  /\b(\d{1,5})\s+((?:[NSEW]\.?\s+)?[\w\s'.-]{2,30}(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Circle|Cir|Place|Pl|Terrace|Ter|Trail|Trl)\.?)/gi,
+  // Full address with state abbreviation
+  new RegExp(
+    `(?:^|\\n)[ \\t]*(\\d{1,5})\\s+((?:[NSEW]\\.?\\s+)?[\\w\\s'.-]{2,40}(?:${STREET_TYPES})\\.?),?\\s+[\\w\\s]{2,30},?\\s+(?:${US_STATES})\\b(?:\\s+\\d{5}(?:-\\d{4})?)?`,
+    "gim",
+  ),
+  // Short form: number + street name + street type + city + state (all on one line)
+  new RegExp(
+    `(?:^|\\n)[ \\t]*(\\d{1,5})\\s+((?:[NSEW]\\.?\\s+)?[\\w\\s'.-]{2,30}(?:${STREET_TYPES})\\.?),?\\s+[\\w\\s]{2,25},?\\s+(?:${US_STATES})\\b`,
+    "gim",
+  ),
 ];
 
 /**
- * Extract candidate addresses from raw email text.
+ * Convert HTML to plain text while preserving line structure.
+ * Replaces block-level tags with newlines before stripping remaining tags,
+ * so that zip codes and street numbers don't bleed across lines.
+ */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|div|li|tr|td|th|h[1-6])[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[ \t]+/g, " ") // collapse horizontal whitespace
+    .replace(/\n{3,}/g, "\n\n") // collapse excess blank lines
+    .trim();
+}
+
+/**
+ * Extract candidate addresses from plain text email body.
  * Returns deduplicated, trimmed strings.
  */
 export function extractAddresses(text: string): string[] {
   const found = new Set<string>();
 
   for (const pattern of ADDRESS_PATTERNS) {
-    // Reset lastIndex on each pass since patterns are stateful with /g
     pattern.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
-      const candidate = match[0].trim().replace(/\s+/g, " ");
-      // Sanity filters: skip if too short, too long, or obviously not an address
-      if (candidate.length < 10 || candidate.length > 120) continue;
+      // Strip any leading newline captured by the line-boundary group
+      const candidate = match[0]
+        .replace(/^[\n\r]+/, "")
+        .trim()
+        .replace(/\s+/g, " ");
+      if (candidate.length < 10 || candidate.length > 150) continue;
       found.add(candidate);
     }
   }
@@ -175,9 +210,7 @@ export async function pollEmailInbox(userId = "default"): Promise<{
         // Parse the full email
         const parsed = await simpleParser(msg.source);
         const htmlText =
-          typeof parsed.html === "string"
-            ? parsed.html.replace(/<[^>]+>/g, " ")
-            : "";
+          typeof parsed.html === "string" ? htmlToText(parsed.html) : "";
         const bodyText = parsed.text ?? htmlText;
 
         // Extract address candidates
