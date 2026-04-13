@@ -86,12 +86,16 @@ Batch triage is therefore pulled forward to v1.2 — immediately after fixing th
 **Timeline estimate:** 2–3 weeks.  
 **Why this comes after triage:** Auth is a prerequisite for selling to others, not for proving value. Prove value first with the primary user via v1.2, then build the infrastructure to share it.
 
-| Feature                                                       | Priority | Skill                                   |
-| ------------------------------------------------------------- | -------- | --------------------------------------- |
-| User authentication (email + password or OAuth)               | Critical | Builder (run /grill-me before starting) |
-| Per-user deal isolation (each user sees only their own deals) | Critical | Builder                                 |
-| Deal notes with timestamps (activity log per deal)            | High     | Builder                                 |
-| Deal duplication (clone a deal to test different assumptions) | Medium   | Builder                                 |
+| Feature                                                                              | Priority | Skill        |
+| ------------------------------------------------------------------------------------ | -------- | ------------ |
+| User authentication — Clerk, Google OAuth + email/password                           | ✅ Done  | Builder      |
+| Per-user deal isolation (each user sees only their own deals)                        | ✅ Done  | Builder      |
+| Invite-only access control (Clerk allowlist)                                         | ✅ Done  | Builder      |
+| Public marketing homepage (SEO-optimized, crawlable by search engines and AI agents) | High     | UX + Builder |
+| Email + password login (Clerk already configured, one toggle)                        | Medium   | Builder      |
+| Deal notes with timestamps (activity log per deal)                                   | High     | Builder      |
+| Deal duplication (clone a deal to test different assumptions)                        | Medium   | Builder      |
+| Migrate existing data from userId="default" to real Clerk ID                         | High     | Builder      |
 
 **Definition of done:** You can give another flipper a login. Their deals are invisible to everyone else. You can onboard paying customers.
 
