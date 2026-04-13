@@ -144,8 +144,7 @@ router.post("/deals", async (req, res): Promise<void> => {
   }
 
   // Usage cap: reject if the user has hit their monthly limit.
-  // TODO: v1.3 — replace "default" with req.user.id from auth middleware.
-  const userId = "default";
+  const userId: string = res.locals.userId;
   if (await isOverCap(userId)) {
     const used = await getUsageThisMonth(userId);
     res.status(429).json({

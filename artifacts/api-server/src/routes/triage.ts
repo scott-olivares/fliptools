@@ -175,9 +175,8 @@ async function loadTriageRows(userId: string): Promise<TriageDeal[]> {
 }
 
 // GET /triage — full deal list grouped by signal.
-// TODO: replace hardcoded "default" userId with req.user.id once v1.3 auth ships.
 router.get("/triage", async (_req, res): Promise<void> => {
-  const userId = "default"; // TODO: v1.3 — use authenticated user ID
+  const userId: string = res.locals.userId;
   const rows = await loadTriageRows(userId);
 
   if (rows.length === 0) {
@@ -198,9 +197,8 @@ router.get("/triage", async (_req, res): Promise<void> => {
 // GET /triage/stats — lightweight counts for the dashboard header/badge.
 // Kept as a separate endpoint intentionally: at scale, stats can be cached
 // or precomputed independently of the full list (different TTL, different query shape).
-// TODO: replace hardcoded "default" userId with req.user.id once v1.3 auth ships.
 router.get("/triage/stats", async (_req, res): Promise<void> => {
-  const userId = "default"; // TODO: v1.3 — use authenticated user ID
+  const userId: string = res.locals.userId;
   const rows = await loadTriageRows(userId);
 
   if (rows.length === 0) {

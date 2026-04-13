@@ -2,12 +2,27 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  useAuth,
+} from "@clerk/clerk-react";
+import { useEffect } from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Dashboard from "@/pages/dashboard";
 import NewDeal from "@/pages/new-deal";
 import DealDetail from "@/pages/deal-detail/index";
 import TriageDashboard from "@/pages/triage";
+import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
+
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable");
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +32,19 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Wires Clerk's getToken into the API client so every request
+// automatically gets an Authorization: Bearer <token> header.
+function AuthTokenBridge() {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => setAuthTokenGetter(null);
+  }, [getToken]);
+
+  return null;
+}
 
 function Router() {
   return (
@@ -32,14 +60,22 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <SignedOut>
+            <LandingPage />
+          </SignedOut>
+          <SignedIn>
+            <AuthTokenBridge />
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+          </SignedIn>
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }
 

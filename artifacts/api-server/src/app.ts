@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { requireAuth } from "./middleware/requireAuth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,7 +34,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+// Public routes — no auth required
+app.use("/api/healthz", router);
+
+// All other API routes require a valid Clerk session token
+app.use("/api", requireAuth, router);
 
 // In production, serve the built frontend from deal-analyzer/dist/public.
 // The frontend build is run as part of the api-server build step (see package.json).
