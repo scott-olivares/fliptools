@@ -73,11 +73,14 @@ function AppContent() {
       </ClerkLoading>
 
       <ClerkLoaded>
+        {/* AuthTokenBridge is outside SignedIn so the token getter is
+            registered immediately — no timing gap between sign-in and
+            the first authenticated API call */}
+        <AuthTokenBridge />
         <SignedOut>
           <LandingPage />
         </SignedOut>
         <SignedIn>
-          <AuthTokenBridge />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
