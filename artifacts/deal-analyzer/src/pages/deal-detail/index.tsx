@@ -23,7 +23,7 @@ import OfferTab from "./offer-tab";
 const TABS = [
   { id: "property", label: "Property Info" },
   { id: "comps", label: "Comps Review" },
-  { id: "arv", label: "ARV Engine" },
+  { id: "arv", label: "ARV Analysis" },
   { id: "offer", label: "Offer Calculator" },
 ];
 
